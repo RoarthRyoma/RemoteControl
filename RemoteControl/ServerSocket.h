@@ -2,6 +2,9 @@
 #include "pch.h"
 #include "framework.h"
 
+#pragma pack(push)
+#pragma pack(1)
+
 #define BUFFER_SIZE 4096
 
 class CPacket
@@ -17,8 +20,23 @@ public:
 		sSum = pack.sSum;
 	}
 
+	//封包
+	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
+	{
+		sHead = 0xFEFF;
+		nLength = nSize + 4;
+		sCmd = nCmd;
+		strData.resize(nSize);
+		memcpy((void*)strData.c_str(), pData, nSize);
+		sSum = 0;
+		for (size_t j = 0; j < strData.size(); j++)
+		{
+			sSum += BYTE(strData[j]) & 0xFF;
+		}
+	}
+
 	//包数据解析
-	CPacket(const BYTE* pData, size_t& nSize)
+	CPacket(const BYTE* pData, size_t& nSize) : CPacket()
 	{
 		size_t i = 0;
 		//解析包头
@@ -54,7 +72,7 @@ public:
 		WORD sum = 0;
 		for (size_t j = 0; j < strData.size(); j++)
 		{
-			sum += BYTE(strData[i]) & 0xFF;
+			sum += BYTE(strData[j]) & 0xFF;
 		}
 		if (sum == sSum)
 		{
@@ -63,7 +81,9 @@ public:
 		}
 		nSize = 0;
 	}
+
 	~CPacket(){}
+
 	CPacket& operator=(const CPacket& pack)
 	{
 		if (this != &pack)
@@ -76,14 +96,45 @@ public:
 		}
 		return *this;
 	}
+
+	//包数据的大小
+	int Size()
+	{
+		return nLength + 6;
+	}
+
+	//包数据内容
+	const char* Data()
+	{
+		strOut.resize(nLength + 6);
+		BYTE* pData = (BYTE*)strOut.c_str();
+		*(WORD*)pData = sHead;
+		pData += 2;
+
+		*(DWORD*)(pData) = nLength;
+		pData += 4;
+
+		*(WORD*)pData = sCmd;
+		pData += 2;
+
+		memcpy(pData, strData.c_str(), strData.size());
+		pData += strData.size();
+
+		*(WORD*)pData = sSum;
+
+		return strOut.c_str();
+	}
+
 public:
 	WORD sHead;			//包头 固定FEFF
 	DWORD nLength;		//包长度（从控制命令开始，到和校验结束）
 	WORD sCmd;			//控制命令
 	std::string strData;//包数据
 	WORD sSum;			//和校验
-
+	std::string strOut; //整个包的数据
 };
+
+#pragma pack(pop)
 
 class CServerSocket
 {
@@ -164,6 +215,12 @@ public:
 	{
 		if (m_client == -1) return false;
 		return send(m_client, pData, nSize, 0) > 0;
+	}
+	bool Send(CPacket& pack)/* Send(const CPacket& pack) */
+	{
+		if (m_client == -1) return false;
+		//return send(m_client, (const char*)&pack, pack.nLength + 2 + 4, 0) > 0;
+		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
 	}
 private:
 	SOCKET m_sock;
