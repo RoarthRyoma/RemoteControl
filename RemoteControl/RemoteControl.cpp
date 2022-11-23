@@ -119,6 +119,61 @@ int MakeDirectoryInfo()
     return 0;
 }
 
+int RunFile()
+{
+    std::string strPath;
+    CServerSocket::getInstance()->GetFilePath(strPath);
+    ShellExecuteA(NULL, NULL, strPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+
+    //封包发包
+	CPacket pack(3, NULL, 0);
+	CServerSocket::getInstance()->Send(pack);
+    return 0;
+}
+
+//#pragma warning(disable:4996) //禁用所有C4996错误
+int DownloadFile()
+{
+	std::string strPath;
+	CServerSocket::getInstance()->GetFilePath(strPath);
+    long long data = 0;
+    //FILE* pFile = fopen(strPath.c_str(), "rb");
+    FILE* pFile = NULL;
+    errno_t err = fopen_s(&pFile, strPath.c_str(), "rb");
+	//if (pFile == NULL)
+	//{
+	//	CPacket pack(4, (BYTE*)&data, 8);
+	//	CServerSocket::getInstance()->Send(pack);
+	//	return -1;
+	//}
+    if (err != 0)
+    {
+		CPacket pack(4, (BYTE*)&data, 8);
+		CServerSocket::getInstance()->Send(pack);
+		return -1;
+    }
+    if (pFile != NULL)
+    {
+        fseek(pFile, 0, SEEK_END);
+        data = _ftelli64(pFile);
+        CPacket head(4, (BYTE*)&data, 8);
+        fseek(pFile, 0, SEEK_SET);
+
+        char buffer[1024]{};
+        size_t rlen = 0;
+        do
+        {
+            rlen = fread(buffer, 1, 1024, pFile);
+            CPacket pack(4, (BYTE*)buffer, rlen);
+            CServerSocket::getInstance()->Send(pack);
+        } while (rlen >= 1024);
+        fclose(pFile);
+	}
+	CPacket pack(4, NULL, 0);
+	CServerSocket::getInstance()->Send(pack);
+    return 0;
+}
+
 int main()
 {
     int nRetCode = 0;
@@ -188,6 +243,12 @@ int main()
             case 2://查看分区目录信息
                 MakeDirectoryInfo();
                 break;
+            case 3://打开文件
+                RunFile();
+                break;
+			case 4://下载文件
+				DownloadFile();
+				break;
             default:
                 break;
             }
