@@ -8,6 +8,7 @@
 #include <direct.h>
 #include <io.h>
 #include <list>
+#include <atlimage.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -283,6 +284,46 @@ int MouseEvent()
     return 0;
 }
 
+int SendScreen()
+{
+    CImage screen;//GDI  图形设备接口(Graphics Device Interface)
+    HDC hScreen = ::GetDC(NULL);
+    int nBitPerPixel = GetDeviceCaps(hScreen, BITSPIXEL);
+	int nWidth = GetDeviceCaps(hScreen, HORZRES);
+    int nHeight = GetDeviceCaps(hScreen, VERTRES);
+    screen.Create(nWidth, nHeight, nBitPerPixel);
+    BitBlt(screen.GetDC(), 0, 0, 2560, 1440, hScreen, 0, 0, SRCCOPY);
+    ReleaseDC(NULL, hScreen);
+
+    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
+    if (hMem == NULL) return -1;
+    IStream* pStream = NULL;
+    HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE/*自己管理内存时使用FALSE*/, &pStream);
+    if (hRet == S_OK)
+    {
+        screen.Save(pStream, Gdiplus::ImageFormatJPEG);
+        LARGE_INTEGER bg = { 0 };
+        pStream->Seek(bg, STREAM_SEEK_SET, NULL);
+        PBYTE pData = (PBYTE)GlobalLock(hMem);
+        SIZE_T nSize = GlobalSize(hMem);
+		CPacket pack(6, pData, nSize);
+		CServerSocket::getInstance()->Send(pack);
+        GlobalUnlock(hMem);
+    }
+    pStream->Release();
+    GlobalFree(hMem);
+    //screen.Save(_T("test2022.jpg"), Gdiplus::ImageFormatJPEG);
+
+	//ULONGLONG tick = GetTickCount64();
+	//screen.Save(_T("test2022.png"), Gdiplus::ImageFormatPNG);
+	//TRACE("png: %d\r\n", GetTickCount64() - tick);
+	//tick = GetTickCount64();
+	//screen.Save(_T("test2022.jpg"), Gdiplus::ImageFormatJPEG);
+	//TRACE("jpeg: %d\r\n", GetTickCount64() - tick);
+    screen.ReleaseDC();
+    return 0;
+}
+
 int main()
 {
     int nRetCode = 0;
@@ -343,7 +384,7 @@ int main()
             //closesocket(serv_sock);
             //WSACleanup();
             //设置全局静态变量
-            int nCmd = 1;
+            int nCmd = 6;
             switch (nCmd)
             {
             case 1://查看磁盘分区信息
@@ -361,6 +402,9 @@ int main()
 			case 5://鼠标事件
 				MouseEvent();
 				break;
+            case 6://发送屏幕内容 => 发送屏幕截图
+                SendScreen();
+                break;
             default:
                 break;
             }

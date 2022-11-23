@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/RemoteControl/test2022.png
+/RemoteControl/test2022.jpg
