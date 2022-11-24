@@ -9,6 +9,8 @@
 #include <io.h>
 #include <list>
 #include <atlimage.h>
+#include "LockDialog.h"
+
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -324,6 +326,76 @@ int SendScreen()
     return 0;
 }
 
+CLockDialog dlg;
+unsigned threadid = 0;
+
+unsigned _stdcall ThreadLockDlg(void* arg)
+{
+    TRACE("%s(%d)%d\r\n", __FUNCTION__, __LINE__, GetCurrentThreadId());
+
+	dlg.Create(IDD_DIALOG_INFO, NULL);
+	dlg.ShowWindow(SW_SHOW);
+	//遮蔽后台窗口
+	CRect rect;
+	rect.left = 0;
+	rect.top = 0;
+	rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
+	rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN) * 1.0;
+	TRACE("right = %d bottom = %d\r\n", rect.right, rect.bottom);
+	dlg.MoveWindow(rect);
+	//窗口置顶
+	dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+	//隐藏鼠标位置
+	ShowCursor(false);
+	//隐藏任务栏
+	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);
+	//限制鼠标活动范围
+	dlg.GetWindowRect(rect);
+	ClipCursor(rect);
+	MSG msg;
+	while (GetMessage(&msg, NULL, 0, 0))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+		if (msg.message == WM_KEYDOWN)
+		{
+			TRACE("msg:%08X lparam:%08X wparam:%08X\r\n", msg.message, msg.wParam, msg.lParam);
+			if (msg.wParam == 0x1B)//按ESC退出
+			{
+				break;
+			}
+		}
+	}
+	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
+	ShowCursor(true);
+	dlg.DestroyWindow();
+    _endthreadex(0);
+    return 0;
+}
+
+int LockMachine()
+{
+    if ((dlg.m_hWnd == NULL)||(dlg.m_hWnd == INVALID_HANDLE_VALUE))
+    {
+        //_beginthread(ThreadLockDlg, 0, NULL);
+        _beginthreadex(NULL, 0, ThreadLockDlg, NULL, 0, &threadid);
+		TRACE("threadid - %d\r\n", threadid);
+    }
+	CPacket pack(7, NULL, 0);
+	CServerSocket::getInstance()->Send(pack);
+    return 0;
+}
+
+int UnlockMachine()
+{
+    //dlg.SendMessage(WM_KEYDOWN, 0x1B, 0x00010001);
+    //::SendMessage(dlg.m_hWnd, WM_KEYDOWN, 0x1B, 0x00010001);
+    PostThreadMessage(threadid, WM_KEYDOWN, 0x1B, 0);
+	CPacket pack(8, NULL, 0);
+	CServerSocket::getInstance()->Send(pack);
+    return 0;
+}
+
 int main()
 {
     int nRetCode = 0;
@@ -383,8 +455,11 @@ int main()
             //send(serv_sock, buffer, sizeof(buffer), 0);
             //closesocket(serv_sock);
             //WSACleanup();
+            
+            
+
             //设置全局静态变量
-            int nCmd = 6;
+            int nCmd = 7;
             switch (nCmd)
             {
             case 1://查看磁盘分区信息
@@ -405,10 +480,24 @@ int main()
             case 6://发送屏幕内容 => 发送屏幕截图
                 SendScreen();
                 break;
+			case 7://鼠标事件
+				LockMachine();
+                //Sleep(500);
+				//LockMachine();
+				break;
+			case 8://鼠标事件
+                UnlockMachine();
+				break;
             default:
                 break;
             }
-            
+            //Sleep(2000);
+            //UnlockMachine();
+			//while ((dlg.m_hWnd != NULL) && (dlg.m_hWnd != INVALID_HANDLE_VALUE))
+			//	Sleep(100);
+			//TRACE("m_hWnd = %08X\r\n", dlg.m_hWnd);
+
+
         }
     }
     else
