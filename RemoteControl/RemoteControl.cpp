@@ -340,7 +340,7 @@ unsigned _stdcall ThreadLockDlg(void* arg)
 	rect.left = 0;
 	rect.top = 0;
 	rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
-	rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN) * 1.0;
+	rect.bottom = (LONG)(GetSystemMetrics(SM_CYFULLSCREEN) * 1.05);
 	TRACE("right = %d bottom = %d\r\n", rect.right, rect.bottom);
 	dlg.MoveWindow(rect);
 	//窗口置顶
@@ -396,6 +396,52 @@ int UnlockMachine()
     return 0;
 }
 
+int TestConnect()
+{
+    CPacket pack(1981, NULL, 0);
+    bool ret = CServerSocket::getInstance()->Send(pack);
+    TRACE(" test Send ret: %d\r\n", ret);
+    return 0;
+}
+
+int ExecuteCommand(int nCmd)
+{
+    int ret = 0;
+	switch (nCmd)
+	{
+	case 1://查看磁盘分区信息
+        ret = MakeDriveInfo();
+		break;
+	case 2://查看分区目录信息
+        ret = MakeDirectoryInfo();
+		break;
+	case 3://打开文件
+        ret = RunFile();
+		break;
+	case 4://下载文件
+        ret = DownloadFile();
+		break;
+	case 5://鼠标事件
+        ret = MouseEvent();
+		break;
+	case 6://发送屏幕内容 => 发送屏幕截图
+        ret = SendScreen();
+		break;
+	case 7://锁机
+        ret = LockMachine();
+		break;
+	case 8://解锁
+        ret = UnlockMachine();
+		break;
+    case 1981:
+        ret = TestConnect();
+        break;
+	default:
+		break;
+	}
+    return ret;
+}
+
 int main()
 {
     int nRetCode = 0;
@@ -414,29 +460,39 @@ int main()
         else
         {
             //1.进度可控 2.对接方便 3.可行性评估，提早暴露风险
-            //WSADATA data;
-            //WSAStartup(MAKEWORD(1, 1), &data);//返回值处理
-			//CServerSocket* pserver = CServerSocket::getInstance();
-			//if (!pserver->InitSocket())
-			//{
-			//	MessageBox(NULL, _T("网络初始化异常,请检查网络状态! "), _T("网络初始化失败"), MB_OK | MB_ICONERROR);
-			//	exit(0);
-			//}
-			//int count = 0;
-			//while (pserver != NULL)
-			//{
-			//	if (!pserver->AcceptClient())
-			//	{
-			//		if (count >= 3)
-			//		{
-			//			MessageBox(NULL, _T("多次无法正常接入用户,程序结束! "), _T("接入用户失败"), MB_OK | MB_ICONERROR);
-			//			exit(0);
-			//		}
-			//		MessageBox(NULL, _T("无法正常接入用户,自动重试中! "), _T("接入用户失败"), MB_OK | MB_ICONERROR);
-			//		count++;
-			//	}
-			//	int ret = pserver->DealCommand();
-			//}
+			CServerSocket* pserver = CServerSocket::getInstance();
+			if (!pserver->InitSocket())
+			{
+				MessageBox(NULL, _T("网络初始化异常,请检查网络状态! "), _T("网络初始化失败"), MB_OK | MB_ICONERROR);
+				exit(0);
+			}
+			int count = 0;
+			while (pserver != NULL)
+			{
+				if (!pserver->AcceptClient())
+				{
+					if (count >= 3)
+					{
+						MessageBox(NULL, _T("多次无法正常接入用户,程序结束! "), _T("接入用户失败"), MB_OK | MB_ICONERROR);
+						exit(0);
+					}
+					MessageBox(NULL, _T("无法正常接入用户,自动重试中! "), _T("接入用户失败"), MB_OK | MB_ICONERROR);
+					count++;
+				}
+                TRACE("Accept return true\r\n");
+				int ret = pserver->DealCommand();
+                TRACE("DealCommand ret: %d\r\n", ret);
+                if (ret > 0)
+                {
+                    ret = ExecuteCommand(ret);
+                    if (ret != 0)
+                    {
+                        TRACE("执行命令失败:%d ret=%d\r\n", pserver->GetPacket().sCmd, ret);
+                    }
+                    pserver->CloseClient();
+                    TRACE("Command has done!\r\n");
+                }
+			}
 
             //SOCKET serv_sock = socket(PF_INET, SOCK_STREAM, 0);//以TCP流式传输
             //校验
@@ -459,38 +515,38 @@ int main()
             
 
             //设置全局静态变量
-            int nCmd = 7;
-            switch (nCmd)
-            {
-            case 1://查看磁盘分区信息
-                MakeDriveInfo();
-                break;
-            case 2://查看分区目录信息
-                MakeDirectoryInfo();
-                break;
-            case 3://打开文件
-                RunFile();
-                break;
-			case 4://下载文件
-				DownloadFile();
-				break;
-			case 5://鼠标事件
-				MouseEvent();
-				break;
-            case 6://发送屏幕内容 => 发送屏幕截图
-                SendScreen();
-                break;
-			case 7://鼠标事件
-				LockMachine();
-                //Sleep(500);
-				//LockMachine();
-				break;
-			case 8://鼠标事件
-                UnlockMachine();
-				break;
-            default:
-                break;
-            }
+            //int nCmd = 7;
+            //switch (nCmd)
+            //{
+            //case 1://查看磁盘分区信息
+            //  MakeDriveInfo();
+            //  break;
+            //case 2://查看分区目录信息
+            //  MakeDirectoryInfo();
+            //  break;
+            //case 3://打开文件
+            //  RunFile();
+            //  break;
+			//case 4://下载文件
+			//	DownloadFile();
+			//	break;
+			//case 5://鼠标事件
+			//	MouseEvent();
+			//	break;
+            //case 6://发送屏幕内容 => 发送屏幕截图
+            //  SendScreen();
+            //  break;
+			//case 7://鼠标事件
+			//	LockMachine();
+            //  //Sleep(500);
+			//	//LockMachine();
+			//	break;
+			//case 8://鼠标事件
+            //  UnlockMachine();
+			//	break;
+            //default:
+            //  break;
+            //}
             //Sleep(2000);
             //UnlockMachine();
 			//while ((dlg.m_hWnd != NULL) && (dlg.m_hWnd != INVALID_HANDLE_VALUE))
