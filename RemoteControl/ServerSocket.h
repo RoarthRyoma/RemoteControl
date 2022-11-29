@@ -6,7 +6,7 @@
 #pragma pack(1)
 
 #define BUFFER_SIZE 4096
-
+void Dump(BYTE* pData, size_t nSize);
 class CPacket
 {
 public:
@@ -158,6 +158,23 @@ typedef struct MouseEvent
 	POINT ptXY;//坐标
 }MOUSEEV, * PMOUSEEV;
 
+typedef struct _FILE_INFO
+{
+	_FILE_INFO()
+	{
+		IsInvalid = FALSE;
+		IsDirectory = -1;
+		HasNext = TRUE;
+		memset(szFileName, 0, sizeof(szFileName));
+	}
+
+	BOOL IsInvalid;//是否有效, 0-否 1-是
+	BOOL IsDirectory;//是否为目录, 0-否 1-是
+	BOOL HasNext;   //是否还有后续
+	char szFileName[256];//文件名
+
+} FILEINFO, * PFILEINFO;
+
 class CServerSocket
 {
 public:
@@ -252,6 +269,7 @@ public:
 	{
 		if (m_client == -1) return false;
 		//return send(m_client, (const char*)&pack, pack.nLength + 2 + 4, 0) > 0;
+		Dump((BYTE*)pack.Data(), pack.Size());
 		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
 	}
 	bool GetFilePath(std::string& strPath)

@@ -37,23 +37,6 @@ void Dump(BYTE* pData, size_t nSize)
     OutputDebugStringA(strOut.c_str());
 }
 
-typedef struct _FILE_INFO
-{
-    _FILE_INFO()
-    {
-        IsInvalid = FALSE;
-        IsDirectory = -1;
-        HasNext = TRUE;
-        memset(szFileName, 0, sizeof(szFileName));
-    }
-
-    BOOL IsInvalid;//是否有效, 0-否 1-是
-    BOOL IsDirectory;//是否为目录, 0-否 1-是
-    BOOL HasNext;   //是否还有后续
-    char szFileName[256];//文件名
-
-} FILEINFO, *PFILEINFO;
-
 //获取磁盘信息
 int MakeDriveInfo()//1->A  2->B  3->C ... 26->Z
 {
@@ -87,10 +70,10 @@ int MakeDirectoryInfo()
     if (_chdir(strPath.c_str()) != 0)
     {
         FILEINFO finfo;
-        finfo.IsInvalid = TRUE;
-        finfo.IsDirectory = TRUE;
+        //finfo.IsInvalid = TRUE;
+        //finfo.IsDirectory = TRUE;
         finfo.HasNext = FALSE;
-        memcpy(finfo.szFileName, strPath.c_str(), strPath.size());
+        //memcpy(finfo.szFileName, strPath.c_str(), strPath.size());
         //lstFileInfo.push_back(finfo);
         CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
         CServerSocket::getInstance()->Send(pack);
@@ -102,6 +85,10 @@ int MakeDirectoryInfo()
     if ((hfind = _findfirst("*", &fdata)) == -1)// * 匹配所有文件
     {
 		OutputDebugString(_T("没有找到任何文件。"));
+		FILEINFO finfo;
+		finfo.HasNext = FALSE;
+		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+		CServerSocket::getInstance()->Send(pack);
 		return -3;
     }
     do 
@@ -110,6 +97,7 @@ int MakeDirectoryInfo()
         finfo.IsDirectory = (fdata.attrib & _A_SUBDIR) != 0;
         memcpy(finfo.szFileName, fdata.name, strlen(fdata.name));
 		//lstFileInfo.push_back(finfo);
+        TRACE("file info: %s \r\n", finfo.szFileName);
 		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
 		CServerSocket::getInstance()->Send(pack);
     } while (!_findnext(hfind, &fdata));

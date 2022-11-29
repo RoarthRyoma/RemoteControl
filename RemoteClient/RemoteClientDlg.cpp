@@ -66,7 +66,7 @@ void CRemoteClientDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_TREE_DIR, m_Tree);
 }
 
-int CRemoteClientDlg::SendCommandPacket(int nCmd, BYTE* pData /*= NULL*/, size_t nLength /*= 0*/)
+int CRemoteClientDlg::SendCommandPacket(int nCmd, BYTE* pData /*= NULL*/, size_t nLength /*= 0*/, bool bAutoClose /*= true*/)
 {
 	UpdateData(TRUE);
 	CClientSocket* pClient = CClientSocket::getInstance();
@@ -81,7 +81,10 @@ int CRemoteClientDlg::SendCommandPacket(int nCmd, BYTE* pData /*= NULL*/, size_t
 	TRACE("Send ret: %d\r\n", ret);
 	int cmd = pClient->DealCommand();
 	TRACE("ack: %d\r\n", cmd);
-	pClient->CloseSocket();
+	if (bAutoClose)
+	{
+		pClient->CloseSocket();
+	}
 	return cmd;
 }
 
@@ -91,6 +94,8 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BTN_TEST, &CRemoteClientDlg::OnBnClickedBtnTest)
 	ON_BN_CLICKED(IDC_BTN_FILEINFO, &CRemoteClientDlg::OnBnClickedBtnFileinfo)
+	ON_NOTIFY(NM_DBLCLK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMDblclkTreeDir)
+	ON_NOTIFY(NM_RCLICK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMRClickTreeDir)
 END_MESSAGE_MAP()
 
 
@@ -209,7 +214,8 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 		if (drivers[i] == ',')
 		{
 			dr += ":";
-			m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+			HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+			if(hTemp != 0) m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
 			dr.clear();
 			continue;
 		}
@@ -217,8 +223,127 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 		if (i == drivers.size() - 1)
 		{
 			dr += ":";
-			m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+			HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+			if (hTemp != 0) m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
 			dr.clear();
 		}
+	}
+}
+
+CString CRemoteClientDlg::GetPath(HTREEITEM hTree)
+{
+	CString strRet, strTmp;
+	do 
+	{
+		strTmp = m_Tree.GetItemText(hTree);
+		strRet = strTmp + '\\' + strRet;
+		hTree = m_Tree.GetParentItem(hTree);
+	} while (hTree != NULL);
+	return strRet;
+}
+
+void CRemoteClientDlg::DeleteTreeChildrenItem(HTREEITEM hTree)
+{
+	HTREEITEM hSub = NULL;
+	do 
+	{
+		hSub = m_Tree.GetChildItem(hTree);
+		if (hSub != NULL) m_Tree.DeleteItem(hSub);
+	} while (hSub != NULL);
+}
+
+void CRemoteClientDlg::OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	*pResult = 0;
+	CPoint ptMouse;
+	UINT uFlag = 0;
+	GetCursorPos(&ptMouse);
+	m_Tree.ScreenToClient(&ptMouse);
+	HTREEITEM hTreeSelected = m_Tree.HitTest(ptMouse, &uFlag);
+
+	//点击空白处直接返回
+	if (hTreeSelected == NULL) return;
+	//是文件没有子目录直接返回
+	if (m_Tree.GetChildItem(hTreeSelected) == NULL) return;
+
+	DeleteTreeChildrenItem(hTreeSelected);
+	CString strPath = GetPath(hTreeSelected);
+	int nCmd = SendCommandPacket(2, (BYTE*)(LPCTSTR)strPath, strPath.GetLength(), false);
+	CClientSocket* pClient = CClientSocket::getInstance();
+	PFILEINFO pinfo = (PFILEINFO)pClient->GetPacket().strData.c_str();
+	int cmd;
+	while (pinfo->HasNext)
+	{
+		TRACE("[%s] isdir %d\r\n", pinfo->szFileName, pinfo->IsDirectory);
+		if (pinfo->IsDirectory)
+		{
+			//排除 . 和 .. 两个目录
+			if (CString(pinfo->szFileName) == "." || (CString(pinfo->szFileName) == ".."))
+			{
+				int cmd = pClient->DealCommand();
+				TRACE("ack: %d\r\n", cmd);
+				if (cmd < 0) break;
+				pinfo = (PFILEINFO)pClient->GetPacket().strData.c_str();
+				continue;
+			}
+		}
+		HTREEITEM hTemp = m_Tree.InsertItem(pinfo->szFileName, hTreeSelected, TVI_LAST);
+		if (pinfo->IsDirectory)
+		{
+			m_Tree.InsertItem("", hTemp, TVI_LAST);
+		}
+
+		cmd = pClient->DealCommand();
+		TRACE("ack: %d\r\n", cmd);
+		if (cmd < 0) break;
+		pinfo = (PFILEINFO)pClient->GetPacket().strData.c_str();
+	}
+
+	pClient->CloseSocket();
+}
+
+void CRemoteClientDlg::OnNMRClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// TODO: 在此添加控件通知处理程序代码
+	*pResult = 0;
+	CPoint point;
+	UINT uFlag = 0; // 接收有关点击测试的信息
+	GetCursorPos(&point); // 获取屏幕鼠标坐标
+	m_Tree.ScreenToClient(&point);
+	
+	// 点击测试，是否点击了树节点
+	HTREEITEM hItem = m_Tree.HitTest(point, &uFlag);
+	
+	if (NULL != hItem)
+	{
+		if (uFlag & TVHT_ABOVE)
+			MessageBox(_T("L1：TVHT_ABOVE"));
+		if (uFlag & TVHT_BELOW)
+			MessageBox(_T("L2：TVHT_BELOW"));
+		if (uFlag & TVHT_NOWHERE)
+			MessageBox(_T("L3：TVHT_NOWHERE"));
+		if (uFlag & TVHT_ONITEM)
+			MessageBox(_T("L4：TVHT_ONITEM"));
+		if (uFlag & TVHT_ONITEMBUTTON)
+			MessageBox(_T("L5：TVHT_ONITEMBUTTON"));
+		if (uFlag & TVHT_ONITEMICON)
+			MessageBox(_T("L6：TVHT_ONITEMICON"));
+		if (uFlag & TVHT_ONITEMINDENT)
+			MessageBox(_T("L7：TVHT_ONITEMINDENT"));
+		if (uFlag & TVHT_ONITEMLABEL)
+			MessageBox(_T("L8：TVHT_ONITEMLABEL"));
+	
+		if (uFlag & TVHT_ONITEMRIGHT)
+			MessageBox(_T("L9：TVHT_ONITEMRIGHT"));
+	
+		if (uFlag & TVHT_ONITEMSTATEICON)
+			MessageBox(_T("L10：TVHT_ONITEMSTATEICON"));
+	
+		if (uFlag & TVHT_TOLEFT)
+			MessageBox(_T("L11：TVHT_TOLEFT"));
+	
+		if (uFlag & TVHT_TORIGHT)
+			MessageBox(_T("L12：TVHT_TORIGHT"));
+	
 	}
 }
