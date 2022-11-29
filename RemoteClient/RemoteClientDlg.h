@@ -22,6 +22,10 @@ public:
 
 private:
 	/// <summary>
+	/// 加载文件信息
+	/// </summary>
+	void LoadFileInfo();
+	/// <summary>
 	/// 获取路径
 	/// </summary>
 	/// <param name="hTree"></param>
@@ -67,4 +71,8 @@ public:
 	afx_msg void OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
 //	afx_msg void OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnNMRClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
+	// 显示文件
+	CListCtrl m_List;
+	afx_msg void OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult);
 };
