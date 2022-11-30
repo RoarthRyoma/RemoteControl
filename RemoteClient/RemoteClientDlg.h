@@ -109,4 +109,14 @@ public:
 	afx_msg void OnDeleteFile();
 	afx_msg void OnRunFile();
 	afx_msg LRESULT OnSendPacket(WPARAM wParam, LPARAM lParam);
+	afx_msg void OnBnClickedBtnStartWatch();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	bool isFull() const
+	{
+		return m_isFull;
+	}
+	CImage& GetCImage()
+	{
+		return m_image;
+	}
 };

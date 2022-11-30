@@ -7,6 +7,7 @@
 #include "RemoteClient.h"
 #include "RemoteClientDlg.h"
 #include "afxdialogex.h"
+#include "WatchDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -55,6 +56,7 @@ CRemoteClientDlg::CRemoteClientDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_REMOTECLIENT_DIALOG, pParent)
 	, m_server_address(0)
 	, m_port(_T(""))
+	, m_isFull(false)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -104,6 +106,8 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
 	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
 	ON_MESSAGE(WM_SEND_PACKET, &CRemoteClientDlg::OnSendPacket)
+	ON_BN_CLICKED(IDC_BTN_START_WATCH, &CRemoteClientDlg::OnBnClickedBtnStartWatch)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -268,11 +272,27 @@ void CRemoteClientDlg::threadWatchData()
 			int cmd = pClient->DealCommand();//拿数据存入缓存
 			if (cmd == 6)
 			{
-				if (!m_isFull)
+				if (!m_isFull)//数据更新到缓存
 				{
 					BYTE* pData = (BYTE*)pClient->GetPacket().strData.c_str();
-					//TODO: 存入CImage
-					m_isFull = true;
+					HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
+					if (hMem == NULL)
+					{
+						TRACE("内存不足了!");
+						Sleep(1);
+						continue;
+					}
+					IStream* pStream = NULL;
+					HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+					if (hRet == S_OK)
+					{
+						ULONG length = 0;
+						pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
+						LARGE_INTEGER bg = { 0 };
+						pStream->Seek(bg, STREAM_SEEK_SET, NULL);
+						m_image.Load(pStream);
+						m_isFull = true;
+					}
 				}
 
 			}
@@ -593,4 +613,20 @@ void CRemoteClientDlg::OnDeleteFile()
 		AfxMessageBox("删除文件命令失败!");
 	}
 	LoadFileCurrent();
+}
+
+void CRemoteClientDlg::OnBnClickedBtnStartWatch()
+{
+	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
+	//GetDlgItem(IDC_BTN_START_WATCH)->EnableWindow(FALSE);
+	CWatchDialog dlg(this);
+	dlg.DoModal();
+}
+
+
+void CRemoteClientDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	
+
+	CDialogEx::OnTimer(nIDEvent);
 }
