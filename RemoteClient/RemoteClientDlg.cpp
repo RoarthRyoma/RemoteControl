@@ -264,7 +264,7 @@ void CRemoteClientDlg::threadWatchData()
 	{
 		pClient = CClientSocket::getInstance();
 	} while (pClient == NULL);
-	ULONGLONG tick = GetTickCount64();
+	//ULONGLONG tick = GetTickCount64();
 	for (;;)//等同于while(true)
 	{
 		//if (GetTickCount64() - tick < 60)//增加间隔
