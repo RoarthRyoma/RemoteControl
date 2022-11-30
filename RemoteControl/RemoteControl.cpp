@@ -91,6 +91,7 @@ int MakeDirectoryInfo()
 		CServerSocket::getInstance()->Send(pack);
 		return -3;
     }
+    int COUNT = 0;
     do 
     {
         FILEINFO finfo;
@@ -100,13 +101,14 @@ int MakeDirectoryInfo()
         TRACE("file info: %s \r\n", finfo.szFileName);
 		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
 		CServerSocket::getInstance()->Send(pack);
+        COUNT++;
     } while (!_findnext(hfind, &fdata));
     //发送信息到控制端
     FILEINFO finfo;
     finfo.HasNext = FALSE;
 	CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
 	CServerSocket::getInstance()->Send(pack);
-
+    TRACE("server COUNT: %d\r\n", COUNT);
     return 0;
 }
 

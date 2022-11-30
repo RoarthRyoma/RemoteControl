@@ -285,6 +285,7 @@ void CRemoteClientDlg::LoadFileInfo()
 	int nCmd = SendCommandPacket(2, (BYTE*)(LPCTSTR)strPath, strPath.GetLength(), false);
 	CClientSocket* pClient = CClientSocket::getInstance();
 	PFILEINFO pinfo = (PFILEINFO)pClient->GetPacket().strData.c_str();
+	int COUNT = 0;
 	int cmd;
 	while (pinfo->HasNext)
 	{
@@ -312,13 +313,13 @@ void CRemoteClientDlg::LoadFileInfo()
 		//{
 		//	m_Tree.InsertItem("", hTemp, TVI_LAST);
 		//}
-
+		COUNT++;
 		cmd = pClient->DealCommand();
 		TRACE("ack: %d\r\n", cmd);
 		if (cmd < 0) break;
 		pinfo = (PFILEINFO)pClient->GetPacket().strData.c_str();
 	}
-
+	TRACE("client COUNT: %d\r\n", COUNT);
 	pClient->CloseSocket();
 }
 
@@ -483,7 +484,7 @@ void CRemoteClientDlg::OnDownloadFile()
 		fclose(pFile);
 		pClient->CloseSocket();
 	}
-	
+	//TODO: 大文件传输需要新的处理方式
 }
 
 void CRemoteClientDlg::OnRunFile()

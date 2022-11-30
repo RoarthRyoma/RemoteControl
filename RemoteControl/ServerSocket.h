@@ -269,7 +269,7 @@ public:
 	{
 		if (m_client == -1) return false;
 		//return send(m_client, (const char*)&pack, pack.nLength + 2 + 4, 0) > 0;
-		Dump((BYTE*)pack.Data(), pack.Size());
+		//Dump((BYTE*)pack.Data(), pack.Size());
 		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
 	}
 	bool GetFilePath(std::string& strPath)

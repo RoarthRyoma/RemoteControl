@@ -8,7 +8,7 @@
 #pragma pack(1)
 
 #define BUFFER_SIZE 4096
-
+void Dump(BYTE* pData, size_t nSize);
 class CPacket
 {
 public:
@@ -78,6 +78,7 @@ public:
 		{
 			strData.resize(nLength - 2 - 2);
 			memcpy((void*)strData.c_str(), pData + i, nLength - 4);
+			TRACE("客户端接收包: %s\r\n", strData.c_str());
 			i += nLength - 4;
 		}
 		sSum = *(WORD*)(pData + i); i += 2;
@@ -232,21 +233,22 @@ public:
 		//char buffer[1024]{};
 		//char* buffer = new char[BUFFER_SIZE];
 		char* buffer = m_buffer.data();
-		memset(buffer, 0, BUFFER_SIZE);//准备好缓冲区
-		size_t index = 0;
+		//memset(buffer, 0, BUFFER_SIZE);//准备好缓冲区
+		static size_t index = 0;
 		while (true)
 		{
 			size_t len = recv(m_sock, buffer + index, BUFFER_SIZE - index, 0);
-			if (len <= 0)
+			if ((len <= 0) && (index == 0))
 			{
 				return -1;
 			}
+			Dump((BYTE*)buffer, len);
 			index += len;
 			len = index;
 			m_packet = CPacket((BYTE*)buffer, len);
 			if (len > 0)
 			{
-				memmove(buffer, buffer + len, BUFFER_SIZE - len);
+				memmove(buffer, buffer + len, index - len);
 				index -= len;
 				return m_packet.sCmd;
 			}
@@ -315,6 +317,7 @@ private:
 		}
 		//m_sock = socket(PF_INET, SOCK_STREAM, 0);
 		m_buffer.resize(BUFFER_SIZE);
+		memset(m_buffer.data(), 0, BUFFER_SIZE);
 	}
 
 	~CClientSocket()
