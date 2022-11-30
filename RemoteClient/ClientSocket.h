@@ -242,7 +242,7 @@ public:
 			{
 				return -1;
 			}
-			Dump((BYTE*)buffer, len);
+			//Dump((BYTE*)buffer, len);
 			index += len;
 			len = index;
 			m_packet = CPacket((BYTE*)buffer, len);

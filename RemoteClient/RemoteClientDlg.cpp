@@ -103,6 +103,7 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_COMMAND(ID_DOWNLOAD_FILE, &CRemoteClientDlg::OnDownloadFile)
 	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
 	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
+	ON_MESSAGE(WM_SEND_PACKET, &CRemoteClientDlg::OnSendPacket)
 END_MESSAGE_MAP()
 
 
@@ -142,6 +143,10 @@ BOOL CRemoteClientDlg::OnInitDialog()
 	m_server_address = 0x7F000001;
 	m_port = _T("9527");
 	UpdateData(FALSE);
+	m_dlgStatus.Create(IDD_DLG_STATUS, this);
+	m_dlgStatus.ShowWindow(SW_HIDE);
+
+	m_isFull = false;
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -238,6 +243,117 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 			dr.clear();
 		}
 	}
+}
+
+void CRemoteClientDlg::threadEntryForWatchData(void* arg)
+{
+	CRemoteClientDlg* that = (CRemoteClientDlg*)arg;
+	that->threadWatchData();
+	_endthread();
+}
+
+void CRemoteClientDlg::threadWatchData()
+{
+	CClientSocket* pClient = NULL;
+	do 
+	{
+		pClient = CClientSocket::getInstance();
+	} while (pClient == NULL);
+	for (;;)//等同于while(true)
+	{
+		CPacket pack(6, NULL, 0);
+		bool ret = pClient->Send(pack);
+		if (ret)
+		{
+			int cmd = pClient->DealCommand();//拿数据存入缓存
+			if (cmd == 6)
+			{
+				if (!m_isFull)
+				{
+					BYTE* pData = (BYTE*)pClient->GetPacket().strData.c_str();
+					//TODO: 存入CImage
+					m_isFull = true;
+				}
+
+			}
+		}
+		else
+		{
+			Sleep(1);
+		}
+	}
+}
+
+void CRemoteClientDlg::threadEntryForDownFile(void* arg)
+{
+	CRemoteClientDlg* that = (CRemoteClientDlg*)arg;
+	that->threadDownFile();
+	_endthread();
+}
+
+void CRemoteClientDlg::threadDownFile()
+{
+	int nListSelected = m_List.GetSelectionMark();
+	CString strFile = m_List.GetItemText(nListSelected, 0);
+
+	CFileDialog dlg(FALSE, "*", strFile,
+		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+		NULL, this);
+	if (dlg.DoModal() == IDOK)
+	{
+		FILE* pFile = NULL;
+		errno_t err = fopen_s(&pFile, dlg.GetPathName(), "wb+");
+		if (err != 0)
+		{
+			AfxMessageBox(_T("没有权限保存该文件或文件无法创建!"));
+			m_dlgStatus.ShowWindow(SW_HIDE);
+			EndWaitCursor();
+			return;
+		}
+		HTREEITEM hSelected = m_Tree.GetSelectedItem();
+		strFile = GetPath(hSelected) + strFile;//根据选中获取完整路径
+		TRACE("File Path: %s\r\n", (LPCTSTR)strFile);
+		CClientSocket* pClient = CClientSocket::getInstance();
+		do
+		{
+			//int ret = SendCommandPacket(4, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), false);
+			int ret = SendMessage(WM_SEND_PACKET, 4 << 1 | 0, (LPARAM)(LPCTSTR)strFile);
+			if (ret < 0)
+			{
+				AfxMessageBox("下载文件命令执行失败!");
+				TRACE("执行download ret: %d\r\n", ret);
+				//fclose(pFile);
+				//pClient->CloseSocket();
+				//return;
+				break;
+			}
+			long long nLength = *(long long*)pClient->GetPacket().strData.c_str();
+			if (nLength == 0)
+			{
+				AfxMessageBox("文件长度为0或无法读取文件");
+				//return;
+				break;
+			}
+			long long nCount = 0;
+			while (nCount < nLength)
+			{
+				ret = pClient->DealCommand();
+				if (ret < 0)
+				{
+					AfxMessageBox("传输失败!");
+					TRACE("传输失败 ret:%d", ret);
+					break;
+				}
+				fwrite(pClient->GetPacket().strData.c_str(), 1, pClient->GetPacket().strData.size(), pFile);
+				nCount += pClient->GetPacket().strData.size();
+			}
+		} while (false);
+		fclose(pFile);
+		pClient->CloseSocket();
+	}
+	m_dlgStatus.ShowWindow(SW_HIDE);
+	EndWaitCursor();
+	MessageBox(_T("下载完成!! "), _T("完成"));
 }
 
 void CRemoteClientDlg::LoadFileCurrent()
@@ -429,62 +545,15 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 
 void CRemoteClientDlg::OnDownloadFile()
 {
-	int nListSelected = m_List.GetSelectionMark();
-	CString strFile = m_List.GetItemText(nListSelected, 0);
+	/*             添加线程函数          */
+	_beginthread(CRemoteClientDlg::threadEntryForDownFile, 0, this);
+	Sleep(50);//休眠50毫秒启用线程
+	m_dlgStatus.m_info.SetWindowText(_T("命令正在执行中..."));
+	BeginWaitCursor();
+	m_dlgStatus.CenterWindow(this);
+	m_dlgStatus.ShowWindow(SW_SHOW);
+	m_dlgStatus.SetActiveWindow();
 	
-	CFileDialog dlg(FALSE, "*",strFile, 
-		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, 
-		NULL, this);
-	if (dlg.DoModal() == IDOK)
-	{
-		FILE* pFile = NULL;
-		errno_t err = fopen_s(&pFile, dlg.GetPathName(), "wb+");
-		if (err != 0)
-		{
-			AfxMessageBox(_T("没有权限保存该文件或文件无法创建!"));
-			return;
-		}
-		HTREEITEM hSelected = m_Tree.GetSelectedItem();
-		strFile = GetPath(hSelected) + strFile;//根据选中获取完整路径
-		TRACE("File Path: %s\r\n", (LPCTSTR)strFile);
-		CClientSocket* pClient = CClientSocket::getInstance();
-		do
-		{
-			int ret = SendCommandPacket(4, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), false);
-			if (ret < 0)
-			{
-				AfxMessageBox("下载文件命令执行失败!");
-				TRACE("执行download ret: %d\r\n", ret);
-				//fclose(pFile);
-				//pClient->CloseSocket();
-				//return;
-				break;
-			}
-			long long nLength = *(long long*)pClient->GetPacket().strData.c_str();
-			if (nLength == 0)
-			{
-				AfxMessageBox("文件长度为0或无法读取文件");
-				//return;
-				break;
-			}
-			long long nCount = 0;
-			while (nCount < nLength)
-			{
-				ret = pClient->DealCommand();
-				if (ret < 0)
-				{
-					AfxMessageBox("传输失败!");
-					TRACE("传输失败 ret:%d", ret);
-					break;
-				}
-				fwrite(pClient->GetPacket().strData.c_str(), 1, pClient->GetPacket().strData.size(), pFile);
-				nCount += pClient->GetPacket().strData.size();
-			}
-		} while (false);
-		fclose(pFile);
-		pClient->CloseSocket();
-	}
-	//TODO: 大文件传输需要新的处理方式
 }
 
 void CRemoteClientDlg::OnRunFile()
@@ -500,6 +569,14 @@ void CRemoteClientDlg::OnRunFile()
 	{
 		AfxMessageBox("打开文件命令失败!");
 	}
+}
+
+LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
+{
+	CString strFile = (LPCTSTR)lParam;
+	int ret = SendCommandPacket(wParam >> 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), wParam & 1);
+
+	return ret;
 }
 
 void CRemoteClientDlg::OnDeleteFile()
