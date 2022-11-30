@@ -274,7 +274,8 @@ public:
 	}
 	bool GetFilePath(std::string& strPath)
 	{
-		if ((m_packet.sCmd >= 2) && (m_packet.sCmd <= 4))
+		int cmd = m_packet.sCmd;
+		if ((cmd >= 2) && (cmd <= 4) || cmd == 9)
 		{
 			strPath = m_packet.strData;
 			return true;

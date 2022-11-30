@@ -22,6 +22,10 @@ public:
 
 private:
 	/// <summary>
+	/// 重新加载当前文件夹内容
+	/// </summary>
+	void LoadFileCurrent();
+	/// <summary>
 	/// 加载文件信息
 	/// </summary>
 	void LoadFileInfo();

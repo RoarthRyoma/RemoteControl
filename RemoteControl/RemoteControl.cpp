@@ -393,6 +393,39 @@ int TestConnect()
     return 0;
 }
 
+int DeleteLocalFile()
+{
+	std::string strPath;
+	CServerSocket::getInstance()->GetFilePath(strPath);
+    TCHAR sPath[MAX_PATH] = _T("");
+
+	/*//中文容易乱码
+    mbstowcs(sPath, strPath.c_str(), strPath.size());*/
+    //WindowsAPI处理宽字节和多字节的转码
+    MultiByteToWideChar(CP_ACP, 0, strPath.c_str(), strPath.size(), sPath, sizeof(sPath) / sizeof(TCHAR));
+	DeleteFile(sPath);
+	CPacket pack(9, NULL, 0);
+	bool ret = CServerSocket::getInstance()->Send(pack);
+	TRACE(" delete file Send ret: %d\r\n", ret);
+	return 0;
+	/*//不报C4996安全错误的写法
+    size_t converted = strPath.size() + 1;
+	errno_t err = mbstowcs_s(&converted, sPath, converted, strPath.c_str(), _TRUNCATE);
+	if (err == 0)
+	{
+		DeleteFile(sPath);
+		CPacket pack(9, NULL, 0);
+		bool ret = CServerSocket::getInstance()->Send(pack);
+		TRACE(" delete file Send ret: %d\r\n", ret);
+		return 0;
+	}
+	else
+	{
+		TRACE("delete file failed\r\n");
+		return -1;
+	}*/
+}
+
 int ExecuteCommand(int nCmd)
 {
     int ret = 0;
@@ -421,6 +454,9 @@ int ExecuteCommand(int nCmd)
 		break;
 	case 8://解锁
         ret = UnlockMachine();
+		break;
+    case 9://删除文件
+        ret = DeleteLocalFile();
 		break;
     case 1981:
         ret = TestConnect();
