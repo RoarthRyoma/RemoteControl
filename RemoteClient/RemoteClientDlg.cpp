@@ -31,6 +31,7 @@ public:
 // Implementation
 protected:
 	DECLARE_MESSAGE_MAP()
+public:
 };
 
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
@@ -99,6 +100,9 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_NOTIFY(NM_RCLICK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMRClickTreeDir)
 	ON_NOTIFY(NM_CLICK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMClickTreeDir)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST_FILE, &CRemoteClientDlg::OnNMRClickListFile)
+	ON_COMMAND(ID_DOWNLOAD_FILE, &CRemoteClientDlg::OnDownloadFile)
+	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
+	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
 END_MESSAGE_MAP()
 
 
@@ -227,7 +231,10 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 		{
 			dr += ":";
 			HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
-			if (hTemp != 0) m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
+			if (hTemp != NULL)
+			{
+				m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
+			}
 			dr.clear();
 		}
 	}
@@ -382,7 +389,6 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 	ptList = ptMouse;
 	m_List.ScreenToClient(&ptList);
 
-	// 点击测试，是否点击了树节点
 	int ListSelected = m_List.HitTest(ptList, &uFlag);
 	if (ListSelected < 0) return;
 	CMenu menu;
@@ -392,4 +398,70 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 	{
 		pPopup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptMouse.x, ptMouse.y, this);
 	}
+}
+
+
+void CRemoteClientDlg::OnDownloadFile()
+{
+	int nListSelected = m_List.GetSelectionMark();
+	CString strFile = m_List.GetItemText(nListSelected, 0);
+	
+	CFileDialog dlg(FALSE, "*",strFile, 
+		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, 
+		NULL, this);
+	if (dlg.DoModal() == IDOK)
+	{
+		FILE* pFile = NULL;
+		errno_t err = fopen_s(&pFile, dlg.GetPathName(), "wb+");
+		if (err != 0)
+		{
+			AfxMessageBox(_T("没有权限保存该文件或文件无法创建!"));
+			return;
+		}
+		HTREEITEM hSelected = m_Tree.GetSelectedItem();
+		strFile = GetPath(hSelected) + strFile;//根据选中获取完整路径
+		TRACE("File Path: %s\r\n", (LPCTSTR)strFile);
+		int ret = SendCommandPacket(4, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), false);
+		if (ret < 0)
+		{
+			AfxMessageBox("下载文件命令执行失败!");
+			TRACE("执行download ret: %d\r\n", ret);
+			return;
+		}
+		CClientSocket* pClient = CClientSocket::getInstance();
+		long long nLength = *(long long*)pClient->GetPacket().strData.c_str();
+		if (nLength == 0)
+		{
+			AfxMessageBox("文件长度为0或无法读取文件");
+			return;
+		}
+		long long nCount = 0;
+		while (nCount < nLength)
+		{
+			ret = pClient->DealCommand();
+			if (ret < 0)
+			{
+				AfxMessageBox("传输失败!");
+				TRACE("传输失败 ret:%d", ret);
+				break;
+			}
+			fwrite(pClient->GetPacket().strData.c_str(), 1, pClient->GetPacket().strData.size(), pFile);
+			nCount += pClient->GetPacket().strData.size();
+		}
+		fclose(pFile);
+		pClient->CloseSocket();
+	}
+	
+}
+
+
+void CRemoteClientDlg::OnDeleteFile()
+{
+	
+}
+
+
+void CRemoteClientDlg::OnRunFile()
+{
+	
 }
