@@ -7,7 +7,7 @@
 #pragma pack(push)
 #pragma pack(1)
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 4096000
 void Dump(BYTE* pData, size_t nSize);
 class CPacket
 {

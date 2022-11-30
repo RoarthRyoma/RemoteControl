@@ -25,6 +25,7 @@ CWatchDialog::~CWatchDialog()
 void CWatchDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_WATCH, m_picture);
 }
 
 
@@ -39,6 +40,10 @@ END_MESSAGE_MAP()
 BOOL CWatchDialog::OnInitDialog()
 {
 	CDialog::OnInitDialog();
+	//CRect   temprect(0, 0, 1920, 1080);
+	CRect   temprect(0, 0, 1920, 1080);
+	CWatchDialog::SetWindowPos(NULL, 0, 0, temprect.Width(), temprect.Height(), SWP_NOZORDER | SWP_NOMOVE);
+	//MoveWindow(&temprect);
 
 	SetTimer(0, 50, NULL);
 
@@ -55,6 +60,15 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 		if (pParent->isFull())
 		{
 			//显示
+			CRect rect;
+			m_picture.GetWindowRect(rect);
+			//pParent->GetImage().BitBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, SRCCOPY);
+			pParent->GetImage().StretchBlt(
+				m_picture.GetDC()->GetSafeHdc(), 0, 0,
+				rect.Width(), rect.Height(), SRCCOPY);
+			m_picture.InvalidateRect(NULL);
+			pParent->GetImage().Destroy();
+			pParent->SetImageStatus();
 		}
 	}
 

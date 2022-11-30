@@ -115,8 +115,12 @@ public:
 	{
 		return m_isFull;
 	}
-	CImage& GetCImage()
+	CImage& GetImage()
 	{
 		return m_image;
+	}
+	void SetImageStatus(bool isFull = false)
+	{
+		m_isFull = isFull;
 	}
 };
