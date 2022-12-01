@@ -330,10 +330,21 @@ unsigned _stdcall ThreadLockDlg(void* arg)
 	CRect rect;
 	rect.left = 0;
 	rect.top = 0;
-	rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
-	rect.bottom = (LONG)(GetSystemMetrics(SM_CYFULLSCREEN) * 1.05);
+	rect.right = GetSystemMetrics(SM_CXFULLSCREEN);//w1
+	rect.bottom = (LONG)(GetSystemMetrics(SM_CYFULLSCREEN) * 1.1);//h1
 	TRACE("right = %d bottom = %d\r\n", rect.right, rect.bottom);
 	dlg.MoveWindow(rect);
+    CWnd* pText = dlg.GetDlgItem(IDC_STATIC);
+    if (pText)
+    {
+        CRect rtText;
+        pText->GetWindowRect(rtText);
+        int nWidth = rtText.Width();//w0;
+        int nHeight = rtText.Height();//h0
+        int x = (rect.right - nWidth) / 2;
+        int y = (rect.bottom - nHeight) / 2;
+        pText->MoveWindow(x, y, rtText.Width(), rtText.Height());
+    }
 	//窗口置顶
 	dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 	//隐藏鼠标位置
@@ -357,6 +368,7 @@ unsigned _stdcall ThreadLockDlg(void* arg)
 			}
 		}
 	}
+    ClipCursor(NULL);
 	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
 	ShowCursor(true);
 	dlg.DestroyWindow();

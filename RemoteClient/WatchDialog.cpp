@@ -41,6 +41,8 @@ BEGIN_MESSAGE_MAP(CWatchDialog, CDialog)
 	ON_WM_RBUTTONUP()
 	ON_WM_MOUSEMOVE()
 	ON_STN_CLICKED(IDC_WATCH, &CWatchDialog::OnStnClickedWatch)
+	ON_BN_CLICKED(IDC_BTN_LOCK, &CWatchDialog::OnBnClickedBtnLock)
+	ON_BN_CLICKED(IDC_BTN_UNLOCK, &CWatchDialog::OnBnClickedBtnUnlock)
 END_MESSAGE_MAP()
 
 
@@ -50,6 +52,7 @@ END_MESSAGE_MAP()
 CPoint CWatchDialog::UserPoint2RemoteScreenPoint(CPoint& point, bool isScreen/* =false*/)
 {
 	CRect clientRect;
+	point.y -= 30;
 	//全局坐标到客户端坐标
 	if(isScreen) ScreenToClient(&point);
 	TRACE("x-%d y-%d\r\n", point.x, point.y);
@@ -70,7 +73,7 @@ BOOL CWatchDialog::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 	//CRect   temprect(0, 0, 1920, 1080);
-	CRect   temprect(0, 0, 1920, 1080);
+	CRect   temprect(0, 0, 1920, 1140);
 	CWatchDialog::SetWindowPos(NULL, 0, 0, temprect.Width(), temprect.Height(), SWP_NOZORDER | SWP_NOMOVE);
 	//MoveWindow(&temprect);
 
@@ -261,4 +264,18 @@ void CWatchDialog::OnStnClickedWatch()
 void CWatchDialog::OnOK()
 {
 	//CDialog::OnOK();
+}
+
+
+void CWatchDialog::OnBnClickedBtnLock()
+{
+	CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent();
+	pParent->SendMessage(WM_SEND_PACKET, 7 << 1 | 1);
+}
+
+
+void CWatchDialog::OnBnClickedBtnUnlock()
+{
+	CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent();
+	pParent->SendMessage(WM_SEND_PACKET, 8 << 1 | 1);
 }
