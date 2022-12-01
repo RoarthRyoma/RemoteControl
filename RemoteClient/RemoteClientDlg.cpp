@@ -144,7 +144,8 @@ BOOL CRemoteClientDlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 	UpdateData(TRUE);
-	m_server_address = 0x7F000001;
+	//m_server_address = 0x7F000001;//127.0.0.1
+	m_server_address = 0xC0A80B81;	//192.168.11.129
 	m_port = _T("9527");
 	UpdateData(FALSE);
 	m_dlgStatus.Create(IDD_DLG_STATUS, this);
@@ -265,7 +266,8 @@ void CRemoteClientDlg::threadWatchData()
 		pClient = CClientSocket::getInstance();
 	} while (pClient == NULL);
 	//ULONGLONG tick = GetTickCount64();
-	for (;;)//等同于while(true)
+	//for (;;)//等同于while(true)
+	while(!m_isClosed)
 	{
 		//if (GetTickCount64() - tick < 60)//增加间隔
 		//{
@@ -294,6 +296,10 @@ void CRemoteClientDlg::threadWatchData()
 					pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
 					LARGE_INTEGER bg = { 0 };
 					pStream->Seek(bg, STREAM_SEEK_SET, NULL);
+					if ((HBITMAP)m_image != NULL)
+					{
+						m_image.Destroy();
+					}
 					m_image.Load(pStream);
 					m_isFull = true;
 				}
@@ -609,6 +615,7 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 	{
 		ret = SendCommandPacket(cmd, (BYTE*)lParam,
 			sizeof(MOUSEEV), wParam & 1);
+		TRACE("mouse ret: %d\r\n", ret);
 		break;
 	}
 	case 6:
@@ -643,10 +650,13 @@ void CRemoteClientDlg::OnDeleteFile()
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
 {
+	m_isClosed = false;
 	CWatchDialog dlg(this);
-	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
+	HANDLE hThread = (HANDLE)_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
 	//GetDlgItem(IDC_BTN_START_WATCH)->EnableWindow(FALSE);
 	dlg.DoModal();
+	m_isClosed = true;
+	WaitForSingleObject(hThread, 500);
 }
 
 

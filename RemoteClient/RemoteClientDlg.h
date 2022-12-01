@@ -26,7 +26,7 @@ public:
 private:
 	CImage m_image;//缓存的图片
 	bool m_isFull;//缓存是否有数据, true-有
-
+	bool m_isClosed;//监视线程是否关闭
 private:
 	/// <summary>
 	/// 监控数据的线程函数
