@@ -24,6 +24,20 @@ b请求控制客户端
 <XPD:ATTR name="Author" type="string">Roarth</XPD:ATTR>
 <XPD:ATTR name="Company" type="string">R.co</XPD:ATTR>
 <XPD:ATTR name="Copyright" type="string">Roarth</XPD:ATTR>
+<XPD:ATTR name="#OwnedElements" type="integer">2</XPD:ATTR>
+<XPD:OBJ name="OwnedElements[0]" type="UMLPackage" guid="jOxBCalnfUKCfC4/7+SXXQAA">
+<XPD:ATTR name="Name" type="string">RemoteControl</XPD:ATTR>
+<XPD:REF name="Namespace">i7Fclw3uR0qwQqeVpSqOGAAA</XPD:REF>
+<XPD:ATTR name="#OwnedElements" type="integer">1</XPD:ATTR>
+<XPD:OBJ name="OwnedElements[0]" type="UMLClass" guid="qjAgYGTa9UyCE/GrDUOAtwAA">
+<XPD:ATTR name="Name" type="string">global</XPD:ATTR>
+<XPD:REF name="Namespace">jOxBCalnfUKCfC4/7+SXXQAA</XPD:REF>
+</XPD:OBJ>
+</XPD:OBJ>
+<XPD:OBJ name="OwnedElements[1]" type="UMLPackage" guid="l0HMRACdkEez8ctNlqQncwAA">
+<XPD:ATTR name="Name" type="string">RemoteClient</XPD:ATTR>
+<XPD:REF name="Namespace">i7Fclw3uR0qwQqeVpSqOGAAA</XPD:REF>
+</XPD:OBJ>
 </XPD:OBJ>
 </XPD:BODY>
 </XPD:PROJECT>
