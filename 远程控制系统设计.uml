@@ -595,8 +595,8 @@ b请求控制客户端
 <XPD:OBJ name="OwnedViews[11]" type="UMLClassView" guid="xA/RJ4TznkGmwR5Y9mSjzAAA">
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
-<XPD:ATTR name="Left" type="integer">100</XPD:ATTR>
-<XPD:ATTR name="Top" type="integer">544</XPD:ATTR>
+<XPD:ATTR name="Left" type="integer">60</XPD:ATTR>
+<XPD:ATTR name="Top" type="integer">560</XPD:ATTR>
 <XPD:ATTR name="Width" type="integer">91</XPD:ATTR>
 <XPD:ATTR name="Height" type="integer">43</XPD:ATTR>
 <XPD:REF name="Model">yomgRlNQbU+DRX1vnmLPCQAA</XPD:REF>
@@ -627,7 +627,7 @@ b请求控制客户端
 <XPD:ATTR name="LineColor" type="string">clMaroon</XPD:ATTR>
 <XPD:ATTR name="FillColor" type="string">$00B9FFFF</XPD:ATTR>
 <XPD:ATTR name="LineStyle" type="LineStyleKind">lsRectilinear</XPD:ATTR>
-<XPD:ATTR name="Points" type="Points">188,533;188,544</XPD:ATTR>
+<XPD:ATTR name="Points" type="Points">188,533;188,585;150,585</XPD:ATTR>
 <XPD:REF name="Model">ivLb3TGVf0qpA5Tif3ZyzgAA</XPD:REF>
 <XPD:REF name="Head">xA/RJ4TznkGmwR5Y9mSjzAAA</XPD:REF>
 <XPD:REF name="Tail">cv66R0lTG0CSAbwQFJgF7QAA</XPD:REF>

@@ -1,12 +1,12 @@
 #pragma once
 #include <map>
 //#include <stdio.h>
-//#include <list>
+#include <list>
 #include <atlimage.h>
 #include <direct.h>
 #include <io.h>
 #include "Resource.h"
-#include "ServerSocket.h"
+#include "Packet.h"
 #include "EdoyunTool.h"
 #include "LockDialog.h"
 
@@ -17,10 +17,25 @@ class CCommand
 public:
 	CCommand();
 	~CCommand();
-	int ExecuteCommand(int nCmd);
-
+	int ExecuteCommand(int nCmd, std::list<CPacket>& listPacket, CPacket& inPacket);
+	static void RunCommand(void* arg, int status, std::list<CPacket>& list, CPacket& inPacket)
+	{
+		CCommand* that = (CCommand*)arg;
+		if (status > 0)
+		{
+			int ret = that->ExecuteCommand(status, list, inPacket);
+			if (ret != 0)
+			{
+				TRACE("执行命令失败:%d ret=%d\r\n", status, ret);
+			}
+		}
+		else
+		{
+			MessageBox(NULL, _T("无法正常接入用户,自动重试中! "), _T("接入用户失败"), MB_OK | MB_ICONERROR);
+		}
+	}
 protected:
-	typedef int(CCommand::* CMDFUNC)();//成员函数指针
+	typedef int(CCommand::* CMDFUNC)(std::list<CPacket>& listPacket, CPacket& inPacket);//成员函数指针
 	std::map<int, CMDFUNC> m_mapFunction;//从命令号到功能的映射
 	CLockDialog dlg;
 	unsigned threadid;
@@ -88,7 +103,7 @@ protected:
 	}
 
 	//获取磁盘信息
-	int MakeDriveInfo()//1->A  2->B  3->C ... 26->Z
+	int MakeDriveInfo(std::list<CPacket>& listPacket, CPacket& inPacket)//1->A  2->B  3->C ... 26->Z
 	{
 		std::string result;
 		for (int i = 1; i <= 26; i++)
@@ -99,24 +114,25 @@ protected:
 				result += 'A' + i - 1;
 			}
 		}
-		CPacket pack(1, (BYTE*)result.c_str(), result.size());//打包数据
-		CEdoyunTool::Dump((BYTE*)pack.Data(), pack.Size());
+		listPacket.push_back(CPacket(1, (BYTE*)result.c_str(), result.size()));
+		//CPacket pack(1, (BYTE*)result.c_str(), result.size());//打包数据
+		//CEdoyunTool::Dump((BYTE*)pack.Data(), pack.Size());
 		//CServerSocket::getInstance()->Send(CPacket(1, (BYTE*)result.c_str(), result.size()));
-		CServerSocket::getInstance()->Send(pack);
+		//CServerSocket::getInstance()->Send(pack);
 		return 0;
 	}
 
 	//获取磁盘分区目录
-	int MakeDirectoryInfo()
+	int MakeDirectoryInfo(std::list<CPacket>& listPacket, CPacket& inPacket)
 	{
-		std::string strPath;
+		std::string strPath = inPacket.strData;
 		//std::list<FILEINFO> lstFileInfo;
-		bool flag = CServerSocket::getInstance()->GetFilePath(strPath);
-		if (!flag)
-		{
-			OutputDebugString(_T("命令解析错误！当前命令不是获取文件列表。"));
-			return -1;
-		}
+		//bool flag = CServerSocket::getInstance()->GetFilePath(strPath);
+		//if (!flag)
+		//{
+		//	OutputDebugString(_T("命令解析错误！当前命令不是获取文件列表。"));
+		//	return -1;
+		//}
 		if (_chdir(strPath.c_str()) != 0)
 		{
 			FILEINFO finfo;
@@ -125,8 +141,9 @@ protected:
 			finfo.HasNext = FALSE;
 			//memcpy(finfo.szFileName, strPath.c_str(), strPath.size());
 			//lstFileInfo.push_back(finfo);
-			CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
-			CServerSocket::getInstance()->Send(pack);
+			listPacket.push_back(CPacket(2, (BYTE*)&finfo, sizeof(finfo)));
+			/*CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+			CServerSocket::getInstance()->Send(pack);*/
 			OutputDebugString(_T("没有权限访问当前目录。"));
 			return -2;
 		}
@@ -137,8 +154,9 @@ protected:
 			OutputDebugString(_T("没有找到任何文件。"));
 			FILEINFO finfo;
 			finfo.HasNext = FALSE;
-			CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
-			CServerSocket::getInstance()->Send(pack);
+			listPacket.push_back(CPacket(2, (BYTE*)&finfo, sizeof(finfo)));
+			/*CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+			CServerSocket::getInstance()->Send(pack);*/
 			return -3;
 		}
 		int COUNT = 0;
@@ -149,35 +167,38 @@ protected:
 			memcpy(finfo.szFileName, fdata.name, strlen(fdata.name));
 			//lstFileInfo.push_back(finfo);
 			TRACE("file info: %s \r\n", finfo.szFileName);
-			CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
-			CServerSocket::getInstance()->Send(pack);
+			listPacket.push_back(CPacket(2, (BYTE*)&finfo, sizeof(finfo)));
+			/*CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+			CServerSocket::getInstance()->Send(pack);*/
 			COUNT++;
 		} while (!_findnext(hfind, &fdata));
 		//发送信息到控制端
 		FILEINFO finfo;
 		finfo.HasNext = FALSE;
-		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
-		CServerSocket::getInstance()->Send(pack);
+		listPacket.push_back(CPacket(2, (BYTE*)&finfo, sizeof(finfo)));
+		/*CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+		CServerSocket::getInstance()->Send(pack);*/
 		TRACE("server COUNT: %d\r\n", COUNT);
 		return 0;
 	}
 
-	int RunFile()
+	int RunFile(std::list<CPacket>& listPacket, CPacket& inPacket)
 	{
-		std::string strPath;
-		CServerSocket::getInstance()->GetFilePath(strPath);
+		std::string strPath = inPacket.strData;
+		//CServerSocket::getInstance()->GetFilePath(strPath);
 		ShellExecuteA(NULL, NULL, strPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
 
 		//封包发包
-		CPacket pack(3, NULL, 0);
-		CServerSocket::getInstance()->Send(pack);
+		/*CPacket pack(3, NULL, 0);
+		CServerSocket::getInstance()->Send(pack);*/
+		listPacket.push_back(CPacket(3, NULL, 0));
 		return 0;
 	}
 
-	int DownloadFile()
+	int DownloadFile(std::list<CPacket>& listPacket, CPacket& inPacket)
 	{
-		std::string strPath;
-		CServerSocket::getInstance()->GetFilePath(strPath);
+		std::string strPath = inPacket.strData;
+		//CServerSocket::getInstance()->GetFilePath(strPath);
 		long long data = 0;
 		//FILE* pFile = fopen(strPath.c_str(), "rb");
 		FILE* pFile = NULL;
@@ -190,16 +211,18 @@ protected:
 		//}
 		if (err != 0)
 		{
-			CPacket pack(4, (BYTE*)&data, 8);
-			CServerSocket::getInstance()->Send(pack);
+			/*CPacket pack(4, (BYTE*)&data, 8);
+			CServerSocket::getInstance()->Send(pack);*/
+			listPacket.push_back(CPacket(4, (BYTE*)&data, 8));
 			return -1;
 		}
 		if (pFile != NULL)
 		{
 			fseek(pFile, 0, SEEK_END);
 			data = _ftelli64(pFile);
-			CPacket head(4, (BYTE*)&data, 8);
-			CServerSocket::getInstance()->Send(head);
+			/*CPacket head(4, (BYTE*)&data, 8);
+			CServerSocket::getInstance()->Send(head);*/
+			listPacket.push_back(CPacket(4, (BYTE*)&data, 8));
 			fseek(pFile, 0, SEEK_SET);
 
 			char buffer[1024]{};
@@ -207,21 +230,24 @@ protected:
 			do
 			{
 				rlen = fread(buffer, 1, 1024, pFile);
-				CPacket pack(4, (BYTE*)buffer, rlen);
-				CServerSocket::getInstance()->Send(pack);
+				/*CPacket pack(4, (BYTE*)buffer, rlen);
+				CServerSocket::getInstance()->Send(pack);*/
+				listPacket.push_back(CPacket(4, (BYTE*)buffer, rlen));
 			} while (rlen >= 1024);
 			fclose(pFile);
 		}
-		CPacket pack(4, NULL, 0);
-		CServerSocket::getInstance()->Send(pack);
+		/*CPacket pack(4, NULL, 0);
+		CServerSocket::getInstance()->Send(pack);*/
+		listPacket.push_back(CPacket(4, NULL, 0));
 		return 0;
 	}
 
-	int MouseEvent()
+	int MouseEvent(std::list<CPacket>& listPacket, CPacket& inPacket)
 	{
 		MOUSEEV mouse;
-		if (CServerSocket::getInstance()->GetMouseEvent(mouse))
-		{
+		memcpy(&mouse, inPacket.strData.c_str(), sizeof(MOUSEEV));
+		//if (CServerSocket::getInstance()->GetMouseEvent(mouse))
+		//{
 			DWORD nFlags = 0;
 			switch (mouse.nButton)
 			{
@@ -314,19 +340,20 @@ protected:
 			}
 
 			//封包发包
-			CPacket pack(5, NULL, 0);
-			CServerSocket::getInstance()->Send(pack);
-		}
-		else
-		{
-			OutputDebugString(_T("获取鼠标操作参数失败!"));
-			return -1;
-		}
+			/*CPacket pack(5, NULL, 0);
+			CServerSocket::getInstance()->Send(pack);*/
+			listPacket.push_back(CPacket(5, NULL, 0));
+		//}
+		//else
+		//{
+		//	OutputDebugString(_T("获取鼠标操作参数失败!"));
+		//	return -1;
+		//}
 
 		return 0;
 	}
 
-	int SendScreen()
+	int SendScreen(std::list<CPacket>& listPacket, CPacket& inPacket)
 	{
 		CImage screen;//GDI  图形设备接口(Graphics Device Interface)
 		HDC hScreen = ::GetDC(NULL);
@@ -348,8 +375,9 @@ protected:
 			pStream->Seek(bg, STREAM_SEEK_SET, NULL);
 			PBYTE pData = (PBYTE)GlobalLock(hMem);
 			SIZE_T nSize = GlobalSize(hMem);
-			CPacket pack(6, pData, nSize);
-			CServerSocket::getInstance()->Send(pack);
+			/*CPacket pack(6, pData, nSize);
+			CServerSocket::getInstance()->Send(pack);*/
+			listPacket.push_back(CPacket(6, pData, nSize));
 			GlobalUnlock(hMem);
 		}
 		pStream->Release();
@@ -366,7 +394,7 @@ protected:
 		return 0;
 	}
 
-	int LockMachine()
+	int LockMachine(std::list<CPacket>& listPacket, CPacket& inPacket)
 	{
 		if ((dlg.m_hWnd == NULL) || (dlg.m_hWnd == INVALID_HANDLE_VALUE))
 		{
@@ -374,33 +402,36 @@ protected:
 			_beginthreadex(NULL, 0, &CCommand::ThreadLockDlg, this, 0, &threadid);
 			TRACE("threadid - %d\r\n", threadid);
 		}
-		CPacket pack(7, NULL, 0);
-		CServerSocket::getInstance()->Send(pack);
+		/*CPacket pack(7, NULL, 0);
+		CServerSocket::getInstance()->Send(pack);*/
+		listPacket.push_back(CPacket(7, NULL, 0));
 		return 0;
 	}
 
-	int UnlockMachine()
+	int UnlockMachine(std::list<CPacket>& listPacket, CPacket& inPacket)
 	{
 		//dlg.SendMessage(WM_KEYDOWN, 0x1B, 0x00010001);
 		//::SendMessage(dlg.m_hWnd, WM_KEYDOWN, 0x1B, 0x00010001);
 		PostThreadMessage(threadid, WM_KEYDOWN, 0x1B, 0);
-		CPacket pack(8, NULL, 0);
-		CServerSocket::getInstance()->Send(pack);
+		/*CPacket pack(8, NULL, 0);
+		CServerSocket::getInstance()->Send(pack);*/
+		listPacket.push_back(CPacket(8, NULL, 0));
 		return 0;
 	}
 
-	int TestConnect()
+	int TestConnect(std::list<CPacket>& listPacket, CPacket& inPacket)
 	{
-		CPacket pack(1981, NULL, 0);
+		/*CPacket pack(1981, NULL, 0);
 		bool ret = CServerSocket::getInstance()->Send(pack);
-		TRACE(" test Send ret: %d\r\n", ret);
+		TRACE(" test Send ret: %d\r\n", ret);*/
+		listPacket.push_back(CPacket(1981, NULL, 0));
 		return 0;
 	}
 
-	int DeleteLocalFile()
+	int DeleteLocalFile(std::list<CPacket>& listPacket, CPacket& inPacket)
 	{
-		std::string strPath;
-		CServerSocket::getInstance()->GetFilePath(strPath);
+		std::string strPath = inPacket.strData;
+		//CServerSocket::getInstance()->GetFilePath(strPath);
 		TCHAR sPath[MAX_PATH] = _T("");
 
 		/*//中文容易乱码
@@ -408,9 +439,10 @@ protected:
 		//WindowsAPI处理宽字节和多字节的转码
 		MultiByteToWideChar(CP_ACP, 0, strPath.c_str(), strPath.size(), sPath, sizeof(sPath) / sizeof(TCHAR));
 		DeleteFile(sPath);
-		CPacket pack(9, NULL, 0);
+		/*CPacket pack(9, NULL, 0);
 		bool ret = CServerSocket::getInstance()->Send(pack);
-		TRACE(" delete file Send ret: %d\r\n", ret);
+		TRACE(" delete file Send ret: %d\r\n", ret);*/
+		listPacket.push_back(CPacket(9, NULL, 0));
 		return 0;
 		/*//不报C4996安全错误的写法
 		size_t converted = strPath.size() + 1;
