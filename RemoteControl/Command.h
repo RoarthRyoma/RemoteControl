@@ -17,7 +17,16 @@ class CCommand
 public:
 	CCommand();
 	~CCommand();
-	int ExecuteCommand(int nCmd, std::list<CPacket>& listPacket, CPacket& inPacket);
+	int ExecuteCommand(int nCmd, std::list<CPacket>& listPacket, CPacket& inPacket)
+	{
+		std::map<int, CMDFUNC>::iterator it = m_mapFunction.find(nCmd);
+		if (it == m_mapFunction.end())
+		{
+			return -1;
+		}
+
+		return (this->*it->second) (listPacket, inPacket);
+	}
 	static void RunCommand(void* arg, int status, std::list<CPacket>& list, CPacket& inPacket)
 	{
 		CCommand* that = (CCommand*)arg;

@@ -30,14 +30,3 @@ CCommand::~CCommand()
 {
 
 }
-
-int CCommand::ExecuteCommand(int nCmd, std::list<CPacket>& listPacket, CPacket& inPacket)
-{
-	std::map<int, CMDFUNC>::iterator it = m_mapFunction.find(nCmd);
-	if (it == m_mapFunction.end())
-	{
-		return -1;
-	}
-
-	return (this->*it->second) (listPacket, inPacket);
-}

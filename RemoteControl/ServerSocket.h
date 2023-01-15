@@ -201,6 +201,8 @@ public:
 		bool ret = InitSocket(port);
 		if (!ret) return -1;
 		std::list<CPacket> listPacket;
+		m_callBack = callback;
+		m_arg = arg;
 		int count = 0;
 		while (true)
 		{
@@ -216,7 +218,7 @@ public:
 			if (retCmd > 0)
 			{
 				m_callBack(m_arg, retCmd, listPacket, m_packet);
-				if (listPacket.size() > 0)
+				while (listPacket.size() > 0)
 				{
 					Send(listPacket.front());
 					listPacket.pop_front();
@@ -224,8 +226,6 @@ public:
 			}
 			CloseClient();
 		}
-		m_callBack = callback;
-		m_arg = arg;
 	}
 
 protected:
@@ -314,29 +314,29 @@ protected:
 		//Dump((BYTE*)pack.Data(), pack.Size());
 		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
 	}
-	bool GetFilePath(std::string& strPath)
-	{
-		int cmd = m_packet.sCmd;
-		if ((cmd >= 2) && (cmd <= 4) || cmd == 9)
-		{
-			strPath = m_packet.strData;
-			return true;
-		}
-		return false;
-	}
-	bool GetMouseEvent(MOUSEEV& mouse)
-	{
-		if (m_packet.sCmd == 5)
-		{
-			memcpy(&mouse, m_packet.strData.c_str(), sizeof(MOUSEEV));
-			return true;
-		}
-		return false;
-	}
-	CPacket& GetPacket()
-	{
-		return m_packet;
-	}
+	//bool GetFilePath(std::string& strPath)
+	//{
+	//	int cmd = m_packet.sCmd;
+	//	if ((cmd >= 2) && (cmd <= 4) || cmd == 9)
+	//	{
+	//		strPath = m_packet.strData;
+	//		return true;
+	//	}
+	//	return false;
+	//}
+	//bool GetMouseEvent(MOUSEEV& mouse)
+	//{
+	//	if (m_packet.sCmd == 5)
+	//	{
+	//		memcpy(&mouse, m_packet.strData.c_str(), sizeof(MOUSEEV));
+	//		return true;
+	//	}
+	//	return false;
+	//}
+	//CPacket& GetPacket()
+	//{
+	//	return m_packet;
+	//}
 	void CloseClient()
 	{
 		if (m_client != INVALID_SOCKET)
