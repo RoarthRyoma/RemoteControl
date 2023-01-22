@@ -16,6 +16,8 @@ public:
 	enum { IDD = IDD_DLG_WATCH };
 #endif
 
+private:
+	bool m_isFull;//缓存是否有数据, true-有
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
@@ -38,4 +40,12 @@ public:
 	virtual void OnOK();
 	afx_msg void OnBnClickedBtnLock();
 	afx_msg void OnBnClickedBtnUnlock();
+	void SetImageStatus(bool isFull = false)
+	{
+		m_isFull = isFull;
+	}
+	bool isFull() const
+	{
+		return m_isFull;
+	}
 };

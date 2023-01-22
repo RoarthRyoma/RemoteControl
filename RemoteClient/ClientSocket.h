@@ -192,6 +192,7 @@ public:
 		if (m_instance == NULL)//静态函数没有this指针，所以无法直接访问成员变量
 		{
 			m_instance = new CClientSocket();
+			TRACE("CCLientSocket size is %d\r\n", sizeof(*m_instance));
 		}
 		return m_instance;
 	}
@@ -233,17 +234,17 @@ public:
 		if (m_sock == -1) return -1;
 		//char buffer[1024]{};
 		//char* buffer = new char[BUFFER_SIZE];
-		char* buffer = m_buffer.data();
+		char* buffer = m_buffer.data();//多线程发送命令是可能会出现冲突
 		//memset(buffer, 0, BUFFER_SIZE);//准备好缓冲区
 		static size_t index = 0;
 		while (true)
 		{
 			size_t len = recv(m_sock, buffer + index, BUFFER_SIZE - index, 0);
-			if ((len <= 0) && (index == 0))
+			if (((int)len <= 0) && ((int)index == 0))
 			{
 				return -1;
 			}
-			//Dump((BYTE*)buffer, len);
+			TRACE("recv len = %d(0x%08X) index = %d(0x%08X)\r\n", len, len, index, index);
 			index += len;
 			len = index;
 			m_packet = CPacket((BYTE*)buffer, len);
@@ -350,11 +351,13 @@ private:
 
 	static void ReleaseInstance()
 	{
+		TRACE("CClientSocket has been called!\r\n");
 		if (m_instance != NULL)
 		{
 			CClientSocket* tmp = m_instance;
 			m_instance = NULL;
 			delete tmp;
+			TRACE("CClientSocket has released!\r\n");
 		}
 	}
 

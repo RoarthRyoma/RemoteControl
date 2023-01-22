@@ -6,7 +6,7 @@
 #include "ClientSocket.h"
 #include "StatusDlg.h"
 
-#define WM_SEND_PACKET (WM_USER +1) //发送数据包消息
+//#define WM_SEND_PACKET (WM_USER +1) //发送数据包消息
 
 
 // CRemoteClientDlg dialog
@@ -25,7 +25,7 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 private:
 	CImage m_image;//缓存的图片
-	bool m_isFull;//缓存是否有数据, true-有
+	//bool m_isFull;//缓存是否有数据, true-有
 	bool m_isClosed;//监视线程是否关闭
 private:
 	/// <summary>
@@ -95,21 +95,21 @@ public:
 	afx_msg void OnDownloadFile();
 	afx_msg void OnDeleteFile();
 	afx_msg void OnRunFile();
-	afx_msg LRESULT OnSendPacket(WPARAM wParam, LPARAM lParam);
+	//afx_msg LRESULT OnSendPacket(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnBnClickedBtnStartWatch();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
-	bool isFull() const
-	{
-		return m_isFull;
-	}
+	//bool isFull() const
+	//{
+	//	return m_isFull;
+	//}
 	CImage& GetImage()
 	{
 		return m_image;
 	}
-	void SetImageStatus(bool isFull = false)
-	{
-		m_isFull = isFull;
-	}
+	//void SetImageStatus(bool isFull = false)
+	//{
+	//	m_isFull = isFull;
+	//}
 	afx_msg void OnIpnFieldchangedIpaddressServ(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnEnChangeEditPort();
 };

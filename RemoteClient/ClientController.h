@@ -62,58 +62,14 @@ public:
 	/// <param name="pData">数据</param>
 	/// <param name="nLength">数据长度</param>
 	/// <returns>返回命令值</returns>
-	int SendCommandPacket(int nCmd, BYTE* pData = NULL, size_t nLength = 0, bool bAutoClose = true)
-	{
-		CClientSocket* pClient = CClientSocket::getInstance();
-		if (!pClient->InitSocket()) return false;
-		pClient->Send(CPacket(nCmd, pData, nLength));
-		int cmd = DealCommand();
-		TRACE("ack: %d\r\n", cmd);
-		if (bAutoClose)
-		{
-			CloseSocket();
-		}
-		return cmd;
-	}
+	int SendCommandPacket(int nCmd, BYTE* pData = NULL, size_t nLength = 0, bool bAutoClose = true);
 	int GetImage(CImage& image)
 	{
 		auto pClient = CClientSocket::getInstance();
 		return CEdoyunTool::Byte2Image(image, pClient->GetPacket().strData);
 	}
-	int DownloadFile(CString strPath)
-	{
-		CFileDialog dlg(FALSE, "*", strPath,
-			OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
-			NULL, &m_remoteDlg);
-		if (dlg.DoModal() == IDOK)
-		{
-			m_strRemote = strPath;
-			m_strLocal = dlg.GetPathName();
-
-			/*             添加线程函数          */
-			m_hThreadDownload = (HANDLE)_beginthread(&CClientController::threadDownloadEntry, 0, this);
-			//Sleep(50);//休眠50毫秒启用线程
-			if (WaitForSingleObject(m_hThreadDownload, 0) != WAIT_TIMEOUT)
-			{
-				return -1;
-			}
-			m_remoteDlg.BeginWaitCursor();
-			m_statusDlg.m_info.SetWindowText(_T("命令正在执行中..."));
-			m_statusDlg.CenterWindow(&m_remoteDlg);
-			m_statusDlg.ShowWindow(SW_SHOW);
-			m_statusDlg.SetActiveWindow();
-		}
-		return 0;
-	}
-	void StartWatchScreen()
-	{
-		m_isClosed = false;
-		CWatchDialog dlg(&m_remoteDlg);
-		m_hThreadWatch = (HANDLE)_beginthread(&CClientController::threadWatchScreenEntry, 0, this);
-		dlg.DoModal();
-		m_isClosed = true;
-		WaitForSingleObject(m_hThreadWatch, 500);
-	}
+	int DownloadFile(CString strPath);
+	void StartWatchScreen();
 protected:
 	void threadWatchScreen();
 	static void threadWatchScreenEntry(void* arg);
@@ -142,6 +98,7 @@ protected:
 		{
 			delete m_instance;
 			m_instance = nullptr;
+			TRACE("CClientController has released.\r\n");
 		}
 	}
 
@@ -192,14 +149,12 @@ private:
 	class CHelper
 	{
 	public:
-		CHelper()
-		{
-			CClientController::getInstance();
-		}
+		CHelper(){}
 		~CHelper()
 		{
 			CClientController::ReleaseInstance();
 		}
 	};
+	static CHelper m_helper;
 };
 

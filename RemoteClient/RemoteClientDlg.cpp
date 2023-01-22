@@ -57,7 +57,6 @@ CRemoteClientDlg::CRemoteClientDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_REMOTECLIENT_DIALOG, pParent)
 	, m_server_address(0)
 	, m_port(_T(""))
-	, m_isFull(false)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -89,7 +88,7 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_COMMAND(ID_DOWNLOAD_FILE, &CRemoteClientDlg::OnDownloadFile)
 	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
 	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
-	ON_MESSAGE(WM_SEND_PACKET, &CRemoteClientDlg::OnSendPacket)
+	//ON_MESSAGE(WM_SEND_PACKET, &CRemoteClientDlg::OnSendPacket)
 	ON_BN_CLICKED(IDC_BTN_START_WATCH, &CRemoteClientDlg::OnBnClickedBtnStartWatch)
 	ON_WM_TIMER()
 	ON_NOTIFY(IPN_FIELDCHANGED, IDC_IPADDRESS_SERV, &CRemoteClientDlg::OnIpnFieldchangedIpaddressServ)
@@ -138,7 +137,7 @@ BOOL CRemoteClientDlg::OnInitDialog()
 	m_dlgStatus.Create(IDD_DLG_STATUS, this);
 	m_dlgStatus.ShowWindow(SW_HIDE);
 
-	m_isFull = false;
+	//m_isFull = false;
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -568,48 +567,48 @@ void CRemoteClientDlg::OnRunFile()
 	}
 }
 
-LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
-{
-	int cmd = wParam >> 1;
-	int ret = 0;
-	switch (cmd)
-	{
-	case 4:
-	{
-		CString strFile = (LPCTSTR)lParam;
-		ret = CClientController::getInstance()->SendCommandPacket(cmd, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), wParam & 1);
-		break;
-	}
-	case 5://鼠标操作
-	{
-		ret = CClientController::getInstance()->SendCommandPacket(cmd, (BYTE*)lParam,
-			sizeof(MOUSEEV), wParam & 1);
-		TRACE("mouse ret: %d\r\n", ret);
-		break;
-	}
-	case 6:
-	{
-		ret = CClientController::getInstance()->SendCommandPacket(cmd, NULL, 0, wParam & 1);
-		break;
-	}
-	case 7:
-	{
-		ret = CClientController::getInstance()->SendCommandPacket(cmd, NULL, 0, wParam & 1);
-		break;
-	}
-	case 8:
-	{
-		ret = CClientController::getInstance()->SendCommandPacket(cmd, NULL, 0, wParam & 1);
-		break;
-	}
-	default:
-		ret = -1;
-		break;
-	}
-	
-
-	return ret;
-}
+//LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
+//{
+//	int cmd = wParam >> 1;
+//	int ret = 0;
+//	switch (cmd)
+//	{
+//	case 4:
+//	{
+//		CString strFile = (LPCTSTR)lParam;
+//		ret = CClientController::getInstance()->SendCommandPacket(cmd, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), wParam & 1);
+//		break;
+//	}
+//	case 5://鼠标操作
+//	{
+//		ret = CClientController::getInstance()->SendCommandPacket(cmd, (BYTE*)lParam,
+//			sizeof(MOUSEEV), wParam & 1);
+//		TRACE("mouse ret: %d\r\n", ret);
+//		break;
+//	}
+//	case 6:
+//	{
+//		ret = CClientController::getInstance()->SendCommandPacket(cmd, NULL, 0, wParam & 1);
+//		break;
+//	}
+//	case 7:
+//	{
+//		ret = CClientController::getInstance()->SendCommandPacket(cmd, NULL, 0, wParam & 1);
+//		break;
+//	}
+//	case 8:
+//	{
+//		ret = CClientController::getInstance()->SendCommandPacket(cmd, NULL, 0, wParam & 1);
+//		break;
+//	}
+//	default:
+//		ret = -1;
+//		break;
+//	}
+//	
+//
+//	return ret;
+//}
 
 void CRemoteClientDlg::OnDeleteFile()
 {
