@@ -3,16 +3,17 @@
 #include "framework.h"
 #include <string>
 #include <vector>
+#include <list>
+#include <map>
 
 #pragma pack(push)
 #pragma pack(1)
 
 #define BUFFER_SIZE 4096000
-void Dump(BYTE* pData, size_t nSize);
 class CPacket
 {
 public:
-	CPacket() :sHead(0), nLength(0), sCmd(0), sSum(0)
+	CPacket() :sHead(0), nLength(0), sCmd(0), sSum(0), hEvent(INVALID_HANDLE_VALUE)
 	{
 	}
 	CPacket(const CPacket& pack)
@@ -22,10 +23,11 @@ public:
 		sCmd = pack.sCmd;
 		strData = pack.strData;
 		sSum = pack.sSum;
+		hEvent = pack.hEvent;
 	}
 
 	//封包
-	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
+	CPacket(WORD nCmd, const BYTE* pData, size_t nSize, HANDLE event)
 	{
 		sHead = 0xFEFF;
 		nLength = nSize + 4;
@@ -45,6 +47,7 @@ public:
 		{
 			sSum += BYTE(strData[j]) & 0xFF;
 		}
+		this->hEvent = event;
 	}
 
 	//包数据解析
@@ -108,6 +111,7 @@ public:
 			sCmd = pack.sCmd;
 			strData = pack.strData;
 			sSum = pack.sSum;
+			hEvent = pack.hEvent;
 		}
 		return *this;
 	}
@@ -147,6 +151,7 @@ public:
 	std::string strData;//包数据
 	WORD sSum;			//和校验
 	//std::string strOut; //整个包的数据
+	HANDLE hEvent;
 };
 
 #pragma pack(pop)
@@ -304,6 +309,8 @@ public:
 		m_nPort = nPort;
 	}
 private:
+	std::list<CPacket> m_listSend;
+	std::map<HANDLE, std::list<CPacket>> m_mapAck;
 	int m_nIP;
 	int m_nPort;//端口
 	SOCKET m_sock;
@@ -336,6 +343,7 @@ private:
 	~CClientSocket()
 	{
 		closesocket(m_sock);
+		m_sock = INVALID_SOCKET;
 		WSACleanup();
 	}
 
@@ -348,6 +356,9 @@ private:
 		}
 		return TRUE;
 	}
+
+	void threadFunc();
+	static void threadEntry(void* arg);
 
 	static void ReleaseInstance()
 	{

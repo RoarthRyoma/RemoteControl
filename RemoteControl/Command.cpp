@@ -17,7 +17,7 @@ CCommand::CCommand() : threadid(0)
 		{7, &CCommand::LockMachine},
 		{8, &CCommand::UnlockMachine},
 		{9, &CCommand::DeleteLocalFile},
-		{1987, &CCommand::TestConnect},
+		{1981, &CCommand::TestConnect},
 		{-1, NULL}
 	};
 	for (int i = 0; data[i].nCmd != -1; i++)
