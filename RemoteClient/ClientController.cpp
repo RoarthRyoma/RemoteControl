@@ -49,21 +49,22 @@ LRESULT CClientController::SendMessage(MSG msg)
 	MSGINFO info(msg);
 	PostThreadMessage(m_nThreadID, WM_SEND_MESSAGE, (WPARAM)&info, (LPARAM)&hEvent);
 	WaitForSingleObject(hEvent, INFINITE);
+	CloseHandle(hEvent);
 	return info.result;
 }
 
 int CClientController::SendCommandPacket(int nCmd, BYTE* pData /*= NULL*/, size_t nLength /*= 0*/, bool bAutoClose /*= true*/, std::list<CPacket>* pListPacket /*=nullptr*/)
 {
-	CClientSocket* pClient = CClientSocket::getInstance();
-	//if (!pClient->InitSocket()) return false;
 	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (hEvent == NULL) return -2;
 	//不应该直接发送，而是投入队列
 	std::list<CPacket> listPacket;//应答结果包
 	if (pListPacket == NULL)
 	{
 		pListPacket = &listPacket;
 	}
-	pClient->SendPacket(CPacket(nCmd, pData, nLength, hEvent), *pListPacket);
+	CClientSocket::getInstance()->SendPacket(CPacket(nCmd, pData, nLength, hEvent), *pListPacket);
+	CloseHandle(hEvent);//回收资源句柄，防止资源耗尽
 	if (pListPacket->size() > 0)
 	{
 		return pListPacket->front().sCmd;
@@ -125,7 +126,7 @@ void CClientController::threadWatchScreen()
 			int ret = SendCommandPacket(6, NULL, 0, true, &listPacket);
 			if (ret == 6)
 			{
-				int res = CEdoyunTool::Byte2Image(m_remoteDlg.GetImage(), listPacket.front().strData);
+				int res = CEdoyunTool::Byte2Image(m_watchDlg.GetImage(), listPacket.front().strData);
 				if (res == 0)
 				{
 					m_watchDlg.SetImageStatus(true);

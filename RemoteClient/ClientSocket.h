@@ -263,29 +263,7 @@ public:
 		return -1;
 	}
 
-	bool SendPacket(const CPacket& pack, std::list<CPacket>& listPacket)
-	{
-		if (m_sock == INVALID_SOCKET)
-		{
-			if (!InitSocket()) return false;
-			_beginthread(&CClientSocket::threadEntry, 0, this);
-		}
-		m_listSend.push_back(pack);
-		WaitForSingleObject(pack.hEvent, INFINITE);
-		std::map<HANDLE, std::list<CPacket>>::iterator it;
-		it = m_mapAck.find(pack.hEvent);
-		if (it != m_mapAck.end())
-		{
-			std::list<CPacket>::iterator i;
-			for (i = it->second.begin(); i != it->second.end(); i++)
-			{
-				listPacket.push_back(*i);
-			}
-			m_mapAck.erase(it);
-			return true;
-		}
-		return false;
-	}
+	bool SendPacket(const CPacket& pack, std::list<CPacket>& listPacket, bool isAutoClosed = true);
 	bool GetFilePath(std::string& strPath)
 	{
 		if ((m_packet.sCmd >= 2) && (m_packet.sCmd <= 4))
@@ -322,8 +300,10 @@ public:
 		}
 	}
 private:
+	bool m_bAutoClose;
 	std::list<CPacket> m_listSend;
-	std::map<HANDLE, std::list<CPacket>> m_mapAck;
+	std::map<HANDLE, std::list<CPacket>&> m_mapAck;
+	std::map<HANDLE, bool> m_mapAutoClosed;
 	int m_nIP;
 	int m_nPort;//¶Ë¿Ú
 	SOCKET m_sock;
@@ -339,9 +319,10 @@ private:
 		m_sock = s.m_sock;
 		m_nIP = s.m_nIP;
 		m_nPort = s.m_nPort;
+		m_bAutoClose = s.m_bAutoClose;
 	}
 
-	CClientSocket() : m_nIP(INADDR_ANY), m_nPort(0), m_sock(INVALID_SOCKET)
+	CClientSocket() : m_nIP(INADDR_ANY), m_nPort(0), m_sock(INVALID_SOCKET), m_bAutoClose(true)
 	{
 		if (InitSockEnv() == FALSE)
 		{

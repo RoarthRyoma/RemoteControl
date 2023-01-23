@@ -18,6 +18,7 @@ public:
 
 private:
 	bool m_isFull;//缓存是否有数据, true-有
+	CImage m_image;//缓存的图片
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
@@ -47,5 +48,9 @@ public:
 	bool isFull() const
 	{
 		return m_isFull;
+	}
+	CImage& GetImage()
+	{
+		return m_image;
 	}
 };

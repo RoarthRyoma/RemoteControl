@@ -89,23 +89,21 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == 0)
 	{
-		CClientController* pParent = CClientController::getInstance();
 		if (this->isFull())
 		{
 			//显示
 			CRect rect;
 			m_picture.GetWindowRect(rect);
 			//pParent->GetImage().BitBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, SRCCOPY);
-			CImage image;
-			pParent->GetImage(image);
-			if (m_nObjWidth == -1)m_nObjWidth = image.GetWidth();
-			if(m_nObjHeight == -1)m_nObjHeight = image.GetHeight();
-			image.StretchBlt(
+			m_nObjWidth = m_image.GetWidth();
+			m_nObjHeight = m_image.GetHeight();
+			m_image.StretchBlt(
 				m_picture.GetDC()->GetSafeHdc(), 0, 0,
 				rect.Width(), rect.Height(), SRCCOPY);
 			m_picture.InvalidateRect(NULL);
-			image.Destroy();
+			m_image.Destroy();
 			this->SetImageStatus();
+			TRACE("更新图片完成%d %d\r\n", m_nObjWidth, m_nObjHeight);
 		}
 	}
 

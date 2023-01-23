@@ -24,7 +24,7 @@ public:
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 private:
-	CImage m_image;//缓存的图片
+	//CImage m_image;//缓存的图片
 	//bool m_isFull;//缓存是否有数据, true-有
 	bool m_isClosed;//监视线程是否关闭
 private:
@@ -102,10 +102,7 @@ public:
 	//{
 	//	return m_isFull;
 	//}
-	CImage& GetImage()
-	{
-		return m_image;
-	}
+
 	//void SetImageStatus(bool isFull = false)
 	//{
 	//	m_isFull = isFull;

@@ -201,13 +201,15 @@ void CRemoteClientDlg::OnBnClickedBtnTest()
 
 void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 {
-	int ret = CClientController::getInstance()->SendCommandPacket(1);
-	if (ret == -1)
+	std::list<CPacket> listPacket;
+	int ret = CClientController::getInstance()->SendCommandPacket(1, NULL, 0, true, &listPacket);
+	if (ret == -1 || listPacket.size() == 0)
 	{
 		AfxMessageBox(_T("ÃüÁî´¦ÀíÊ§°Ü"));
 		return;
 	}
-	std::string drivers = CClientController::getInstance()->GetPacket().strData;
+	CPacket& head = listPacket.front();
+	std::string drivers = head.strData;
 	drivers += ",";
 	std::string dr;
 	m_Tree.DeleteAllItems();
@@ -373,7 +375,7 @@ void CRemoteClientDlg::LoadFileCurrent()
 		pinfo = (PFILEINFO)CClientController::getInstance()->GetPacket().strData.c_str();
 	}
 
-	pCtrl->CloseSocket();
+	//pCtrl->CloseSocket();
 }
 
 void CRemoteClientDlg::LoadFileInfo()
@@ -430,7 +432,7 @@ void CRemoteClientDlg::LoadFileInfo()
 		pinfo = (PFILEINFO)CClientController::getInstance()->GetPacket().strData.c_str();
 	}
 	TRACE("client COUNT: %d\r\n", COUNT);
-	CClientController::getInstance()->CloseSocket();
+	//CClientController::getInstance()->CloseSocket();
 }
 
 CString CRemoteClientDlg::GetPath(HTREEITEM hTree)
