@@ -10,6 +10,7 @@ bool CClientSocket::SendPacket(const CPacket& pack, std::list<CPacket>& listPack
 	}
 	auto pr = m_mapAck.insert(std::pair<HANDLE, std::list<CPacket>&>(pack.hEvent, listPacket));
 	m_mapAutoClosed.insert(std::pair<HANDLE, bool>(pack.hEvent, isAutoClosed));
+	TRACE("cmd:%d event:%08X thread_id:%d\r\n", pack.sCmd, pack.hEvent, GetCurrentThreadId());
 	m_listSend.push_back(pack);
 	WaitForSingleObject(pack.hEvent, INFINITE);
 	std::map<HANDLE, std::list<CPacket>&>::iterator it;
@@ -43,41 +44,47 @@ void CClientSocket::threadFunc()
 			if (Send(head) == false)
 			{
 				TRACE("发送失败!\r\n");
-				continue;
+				break;
+				//continue;
 			}
 			
 			std::map<HANDLE, std::list<CPacket>&>::iterator it;
 			it = m_mapAck.find(head.hEvent);
-			auto bIt = m_mapAutoClosed.find(head.hEvent);
-			do 
+			if (it != m_mapAck.end())
 			{
-				int length = recv(m_sock, pBuffer + index, BUFFER_SIZE - index, 0);
-				//if (!(length <= 0 && index <= 0))
-				if (length > 0 || index > 0)
+				auto bIt = m_mapAutoClosed.find(head.hEvent);
+				do
 				{
-					index += length;
-					size_t size = (size_t)index;
-					CPacket pack((BYTE*)pBuffer, size);
-					if (size > 0)
-					{//TODO:文件夹信息获取，文件信息获取可能产生问题
-						pack.hEvent = head.hEvent;
-						it->second.push_back(pack);
-						memmove(pBuffer, pBuffer + size, index - size);
-						index -= size;
-						if (bIt->second)
-						{
-							SetEvent(head.hEvent);
+					int length = recv(m_sock, pBuffer + index, BUFFER_SIZE - index, 0);
+					//if (!(length <= 0 && index <= 0))
+					if (length > 0 || index > 0)
+					{
+						index += length;
+						size_t size = (size_t)index;
+						CPacket pack((BYTE*)pBuffer, size);
+						if (size > 0)
+						{//TODO:文件夹信息获取，文件信息获取可能产生问题
+							pack.hEvent = head.hEvent;
+							it->second.push_back(pack);
+							memmove(pBuffer, pBuffer + size, index - size);
+							index -= size;
+							if (bIt->second)
+							{
+								SetEvent(head.hEvent);
+							}
 						}
 					}
-				}
-				else if (length <= 0 && index <= 0)
-				{
-					CloseSocket();
-					SetEvent(head.hEvent);//等到服务器关闭命令后在通知事件完成
-				}
-			} while (!bIt->second);
+					else if (length <= 0 && index <= 0)
+					{
+						CloseSocket();
+						SetEvent(head.hEvent);//等到服务器关闭命令后在通知事件完成
+						m_mapAutoClosed.erase(bIt);
+						break;
+					}
+				} while (!bIt->second);
+			}
 			m_listSend.pop_front();
-			InitSocket();
+			if(!InitSocket()) InitSocket();
 		}
 	}
 	CloseSocket();

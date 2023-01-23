@@ -395,44 +395,30 @@ void CRemoteClientDlg::LoadFileInfo()
 	m_List.DeleteAllItems();
 
 	CString strPath = GetPath(hTreeSelected);
-	int nCmd = CClientController::getInstance()->SendCommandPacket(2, (BYTE*)(LPCTSTR)strPath, strPath.GetLength(), false);
-	PFILEINFO pinfo = (PFILEINFO)CClientController::getInstance()->GetPacket().strData.c_str();
-	int COUNT = 0;
-	int cmd;
-	while (pinfo->HasNext)
+	std::list<CPacket> listPacket;
+	int nCmd = CClientController::getInstance()->SendCommandPacket(2, (BYTE*)(LPCTSTR)strPath, strPath.GetLength(), false, &listPacket);
+	if (listPacket.size() > 0)
 	{
-		TRACE("[%s] isdir %d\r\n", pinfo->szFileName, pinfo->IsDirectory);
-		if (pinfo->IsDirectory)
+		for (std::list<CPacket>::iterator it = listPacket.begin();it != listPacket.end(); it++)
 		{
-			//排除 . 和 .. 两个目录
-			if (CString(pinfo->szFileName) == "." || (CString(pinfo->szFileName) == ".."))
+			PFILEINFO pinfo = (PFILEINFO)(*it).strData.c_str();
+			if (pinfo->HasNext == FALSE) continue;
+			if (pinfo->IsDirectory)
 			{
-				int cmd = CClientController::getInstance()->DealCommand();
-				TRACE("ack: %d\r\n", cmd);
-				if (cmd < 0) break;
-				pinfo = (PFILEINFO)CClientController::getInstance()->GetPacket().strData.c_str();
-				continue;
+				//排除 . 和 .. 两个目录
+				if (CString(pinfo->szFileName) == "." || (CString(pinfo->szFileName) == ".."))
+				{
+					continue;
+				}
+				HTREEITEM hTemp = m_Tree.InsertItem(pinfo->szFileName, hTreeSelected, TVI_LAST);
+				m_Tree.InsertItem("", hTemp, TVI_LAST);
 			}
-			HTREEITEM hTemp = m_Tree.InsertItem(pinfo->szFileName, hTreeSelected, TVI_LAST);
-			m_Tree.InsertItem("", hTemp, TVI_LAST);
+			else
+			{
+				m_List.InsertItem(0, pinfo->szFileName);
+			}
 		}
-		else
-		{
-			m_List.InsertItem(0, pinfo->szFileName);
-		}
-		//HTREEITEM hTemp = m_Tree.InsertItem(pinfo->szFileName, hTreeSelected, TVI_LAST);
-		//if (pinfo->IsDirectory)
-		//{
-		//	m_Tree.InsertItem("", hTemp, TVI_LAST);
-		//}
-		COUNT++;
-		cmd = CClientController::getInstance()->DealCommand();
-		TRACE("ack: %d\r\n", cmd);
-		if (cmd < 0) break;
-		pinfo = (PFILEINFO)CClientController::getInstance()->GetPacket().strData.c_str();
 	}
-	TRACE("client COUNT: %d\r\n", COUNT);
-	//CClientController::getInstance()->CloseSocket();
 }
 
 CString CRemoteClientDlg::GetPath(HTREEITEM hTree)
