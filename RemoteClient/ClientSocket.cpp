@@ -3,10 +3,6 @@
 
 void CClientSocket::threadFunc()
 {
-	if (!InitSocket())
-	{
-		return;
-	}
 	std::string strBuffer;
 	strBuffer.resize(BUFFER_SIZE);
 	char* pBuffer = (char*)strBuffer.c_str();
@@ -15,10 +11,11 @@ void CClientSocket::threadFunc()
 	{
 		if (m_listSend.size() > 0)
 		{
+			TRACE("listSend size: %d\r\n", m_listSend.size());
 			CPacket& head = m_listSend.front();
 			if (Send(head) == false)
 			{
-				TRACE("∑¢ÀÕ ß∞‹!lr\n");
+				TRACE("∑¢ÀÕ ß∞‹!\r\n");
 				continue;
 			}
 			auto pr = m_mapAck.insert(std::pair<HANDLE, std::list<CPacket>>(head.hEvent, std::list<CPacket>()));
@@ -42,6 +39,7 @@ void CClientSocket::threadFunc()
 			m_listSend.pop_front();
 		}
 	}
+	CloseSocket();
 }
 
 void CClientSocket::threadEntry(void* arg)

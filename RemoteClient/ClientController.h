@@ -7,8 +7,8 @@
 #include "EdoyunTool.h"
 #include <map>
 
-#define WM_SEND_PACK (WM_USER+1)	//发送包数据
-#define WM_SEND_DATA (WM_USER+2)	//发送数据
+//#define WM_SEND_PACK (WM_USER+1)	//发送包数据
+//#define WM_SEND_DATA (WM_USER+2)	//发送数据
 #define WM_SHOW_STATUS (WM_USER+3)	//展示状态
 #define WM_SHOW_WATCH (WM_USER+4)	//远程监控
 #define WM_SEND_MESSAGE (WM_USER+0x1000)	//自定义消息处理
@@ -36,12 +36,12 @@ public:
 	{
 		CClientSocket::getInstance()->CloseSocket();
 	}
-	int SendPacket(const CPacket& pack)
-	{
-		CClientSocket* pClient = CClientSocket::getInstance();
-		if (!pClient->InitSocket()) return false;
-		pClient->Send(pack);
-	}
+	//int SendPacket(const CPacket& pack)
+	//{
+	//	CClientSocket* pClient = CClientSocket::getInstance();
+	//	if (!pClient->InitSocket()) return false;
+	//	pClient->Send(pack);
+	//}
 
 	CPacket& GetPacket()
 	{
@@ -62,7 +62,7 @@ public:
 	/// <param name="pData">数据</param>
 	/// <param name="nLength">数据长度</param>
 	/// <returns>返回命令值</returns>
-	int SendCommandPacket(int nCmd, BYTE* pData = NULL, size_t nLength = 0, bool bAutoClose = true);
+	int SendCommandPacket(int nCmd, BYTE* pData = NULL, size_t nLength = 0, bool bAutoClose = true, std::list<CPacket>* pListPacket = nullptr);
 	int GetImage(CImage& image)
 	{
 		auto pClient = CClientSocket::getInstance();
@@ -102,8 +102,8 @@ protected:
 		}
 	}
 
-	LRESULT OnSendPack(UINT nMsg, WPARAM wParam, LPARAM lParam);
-	LRESULT OnSendData(UINT nMsg, WPARAM wParam, LPARAM lParam);
+	//LRESULT OnSendPack(UINT nMsg, WPARAM wParam, LPARAM lParam);
+	//LRESULT OnSendData(UINT nMsg, WPARAM wParam, LPARAM lParam);
 	LRESULT OnShowStatus(UINT nMsg, WPARAM wParam, LPARAM lParam);
 	LRESULT OnShowWatch(UINT nMsg, WPARAM wParam, LPARAM lParam);
 private:
