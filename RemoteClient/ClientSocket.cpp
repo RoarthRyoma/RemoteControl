@@ -30,6 +30,7 @@ bool CClientSocket::InitSocket()
 		TRACE("连接失败: %d %s \r\n", WSAGetLastError(), GetErrorInfo(WSAGetLastError()).c_str());
 		return false;
 	}
+	TRACE("socket init done!\r\n");
 	return true;
 }
 
@@ -118,13 +119,21 @@ void CClientSocket::threadFunc()
 					{
 						CloseSocket();
 						SetEvent(head.hEvent);//等到服务器关闭命令后在通知事件完成
-						m_mapAutoClosed.erase(bIt);
+						if (bIt != m_mapAutoClosed.end())
+						{
+							TRACE("SetEvent %d %d\r\n", head.sCmd, bIt->second);
+						}
+						else
+						{
+							TRACE("异常的情况，没有对应的pair\r\n");
+						}
 						break;
 					}
 				} while (!bIt->second);
 			}
 			m_lock.lock();
 			m_listSend.pop_front();
+			m_mapAutoClosed.erase(head.hEvent);
 			m_lock.unlock();
 			if(!InitSocket()) InitSocket();
 		}
@@ -132,10 +141,47 @@ void CClientSocket::threadFunc()
 	CloseSocket();
 }
 
-void CClientSocket::threadEntry(void* arg)
+void CClientSocket::threadFunc2()
+{
+	MSG msg;
+	while (::GetMessage(&msg, NULL, 0, 0))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+		if (m_mapFunc.find(msg.message) != m_mapFunc.end())
+		{
+			(this->*m_mapFunc[msg.message])(msg.message, msg.wParam, msg.lParam);
+		}
+	}
+}
+
+void /*unsigned*/ CClientSocket::threadEntry(void* arg)
 {
 	CClientSocket* that = (CClientSocket*)arg;
-	that->threadFunc();
+	//that->threadFunc();
+	that->threadFunc2();
+	_endthreadex(0);
+	//return 0;
+}
+
+void CClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
+{
+	if (InitSocket())
+	{
+		int ret = send(m_sock, (char*)wParam, (int)lParam, 0);
+		if (ret > 0)
+		{
+
+		}
+		else
+		{
+			CloseSocket();
+		}
+	}
+	else
+	{
+		//错误处理
+	}
 }
 
 //CClientSocket server;

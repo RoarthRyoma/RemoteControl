@@ -195,7 +195,8 @@ HCURSOR CRemoteClientDlg::OnQueryDragIcon()
 
 void CRemoteClientDlg::OnBnClickedBtnTest()
 {
-	CClientController::getInstance()->SendCommandPacket(1981);
+	int ret = CClientController::getInstance()->SendCommandPacket(1981);
+	TRACE("BTN TEST Return: %d\r\n", ret);
 }
 
 
