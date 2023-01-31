@@ -57,6 +57,7 @@ CRemoteClientDlg::CRemoteClientDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_REMOTECLIENT_DIALOG, pParent)
 	, m_server_address(0)
 	, m_port(_T(""))
+	, m_isClosed(false)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -195,7 +196,7 @@ HCURSOR CRemoteClientDlg::OnQueryDragIcon()
 
 void CRemoteClientDlg::OnBnClickedBtnTest()
 {
-	int ret = CClientController::getInstance()->SendCommandPacket(1981);
+	int ret = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 1981);
 	TRACE("BTN TEST Return: %d\r\n", ret);
 }
 
@@ -203,7 +204,7 @@ void CRemoteClientDlg::OnBnClickedBtnTest()
 void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 {
 	std::list<CPacket> listPacket;
-	int ret = CClientController::getInstance()->SendCommandPacket(1, NULL, 0, true, &listPacket);
+	int ret = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 1, NULL, 0);
 	if (ret == -1 || listPacket.size() == 0)
 	{
 		AfxMessageBox(_T("命令处理失败"));
@@ -360,7 +361,7 @@ void CRemoteClientDlg::LoadFileCurrent()
 	CString strPath = GetPath(hTreeSelected);
 	m_List.DeleteAllItems();
 	CClientController* pCtrl = CClientController::getInstance();
-	int nCmd = pCtrl->SendCommandPacket(2, (BYTE*)(LPCTSTR)strPath, strPath.GetLength(), false);
+	int nCmd = pCtrl->SendCommandPacket(GetSafeHwnd(), 2, (BYTE*)(LPCTSTR)strPath, strPath.GetLength(), false);
 	PFILEINFO pinfo = (PFILEINFO)CClientController::getInstance()->GetPacket().strData.c_str();
 	int cmd;
 	while (pinfo->HasNext)
@@ -397,7 +398,7 @@ void CRemoteClientDlg::LoadFileInfo()
 
 	CString strPath = GetPath(hTreeSelected);
 	std::list<CPacket> listPacket;
-	int nCmd = CClientController::getInstance()->SendCommandPacket(2, (BYTE*)(LPCTSTR)strPath, strPath.GetLength(), false, &listPacket);
+	int nCmd = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 2, (BYTE*)(LPCTSTR)strPath, strPath.GetLength(), false);
 	if (listPacket.size() > 0)
 	{
 		for (std::list<CPacket>::iterator it = listPacket.begin();it != listPacket.end(); it++)
@@ -549,7 +550,7 @@ void CRemoteClientDlg::OnRunFile()
 	CString strFile = m_List.GetItemText(nListSelected, 0);
 	strFile = strPath + strFile;//拼接路径
 	TRACE("File Path: %s\r\n", (LPCTSTR)strFile);
-	int ret = CClientController::getInstance()->SendCommandPacket(3, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), true);
+	int ret = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 3, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), true);
 	if (ret < 0)
 	{
 		AfxMessageBox("打开文件命令失败!");
@@ -607,7 +608,7 @@ void CRemoteClientDlg::OnDeleteFile()
 	CString strFile = m_List.GetItemText(nListSelected, 0);
 	strFile = strPath + strFile;//拼接路径
 	TRACE("File Path: %s\r\n", (LPCTSTR)strFile);
-	int ret = CClientController::getInstance()->SendCommandPacket(9, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), true);
+	int ret = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 9, (BYTE*)(LPCTSTR)strFile, strFile.GetLength(), true);
 	if (ret < 0)
 	{
 		AfxMessageBox("删除文件命令失败!");

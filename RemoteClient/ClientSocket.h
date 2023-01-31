@@ -8,6 +8,7 @@
 #include <mutex>
 
 #define WM_SEND_PACK (WM_USER+1)		//发送包数据
+#define WM_SEND_PACK_ACK (WM_USER+2)		//发送包数据应答
 
 #pragma pack(push)
 #pragma pack(1)
@@ -16,7 +17,7 @@
 class CPacket
 {
 public:
-	CPacket() :sHead(0), nLength(0), sCmd(0), sSum(0), hEvent(INVALID_HANDLE_VALUE)
+	CPacket() :sHead(0), nLength(0), sCmd(0), sSum(0)
 	{
 	}
 	CPacket(const CPacket& pack)
@@ -26,11 +27,10 @@ public:
 		sCmd = pack.sCmd;
 		strData = pack.strData;
 		sSum = pack.sSum;
-		hEvent = pack.hEvent;
 	}
 
 	//封包
-	CPacket(WORD nCmd, const BYTE* pData, size_t nSize, HANDLE event)
+	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
 	{
 		sHead = 0xFEFF;
 		nLength = nSize + 4;
@@ -50,7 +50,6 @@ public:
 		{
 			sSum += BYTE(strData[j]) & 0xFF;
 		}
-		this->hEvent = event;
 	}
 
 	//包数据解析
@@ -114,7 +113,6 @@ public:
 			sCmd = pack.sCmd;
 			strData = pack.strData;
 			sSum = pack.sSum;
-			hEvent = pack.hEvent;
 		}
 		return *this;
 	}
@@ -154,7 +152,6 @@ public:
 	std::string strData;//包数据
 	WORD sSum;			//和校验
 	//std::string strOut; //整个包的数据
-	HANDLE hEvent;
 };
 
 #pragma pack(pop)
@@ -189,6 +186,37 @@ typedef struct _FILE_INFO
 	char szFileName[256];//文件名
 
 } FILEINFO, * PFILEINFO;
+
+enum
+{
+	CSM_AUTOCLOSE = 1,	//CSM = Client Socket Mode 自动关闭模式
+};
+
+typedef struct PacketData
+{
+	std::string strData;
+	UINT nMode;
+	PacketData(const char* pData, size_t nLen, UINT mode)
+	{
+		strData.resize(nLen);
+		memcpy((char*)strData.c_str(), pData, nLen);
+		nMode = mode;
+	}
+	PacketData(const PacketData& data)
+	{
+		strData = data.strData;
+		nMode = data.nMode;
+	}
+	PacketData& operator=(const PacketData& data)
+	{
+		if (this != &data)
+		{
+			strData = data.strData;
+			nMode = data.nMode;
+		}
+		return *this;
+	}
+}PACKET_DATA;
 
 std::string GetErrorInfo(int wsaErrCode);
 
@@ -236,7 +264,8 @@ public:
 		return -1;
 	}
 
-	bool SendPacket(const CPacket& pack, std::list<CPacket>& listPacket, bool isAutoClosed = true);
+	//bool SendPacket(const CPacket& pack, std::list<CPacket>& listPacket, bool isAutoClosed = true);
+	bool CClientSocket::SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed/*, WPARAM wParam*/ );
 	bool GetFilePath(std::string& strPath)
 	{
 		if ((m_packet.sCmd >= 2) && (m_packet.sCmd <= 4))
@@ -273,6 +302,7 @@ public:
 		}
 	}
 private:
+	UINT m_nThreadID;
 	typedef	void(CClientSocket::* MSGFUNC)(UINT nMsg, WPARAM wParam, LPARAM lParam);
 	std::map<UINT, MSGFUNC> m_mapFunc;
 	HANDLE m_hThread;
@@ -291,42 +321,9 @@ private:
 	{
 	}
 
-	CClientSocket(const CClientSocket& s) 
-	{
-		m_sock = s.m_sock;
-		m_nIP = s.m_nIP;
-		m_nPort = s.m_nPort;
-		m_bAutoClose = s.m_bAutoClose;
-		m_hThread = s.m_hThread;
-	}
+	CClientSocket(const CClientSocket& s);
 
-	CClientSocket() : m_nIP(INADDR_ANY), m_nPort(0), m_sock(INVALID_SOCKET), m_bAutoClose(true), m_hThread(INVALID_HANDLE_VALUE)
-	{
-		if (InitSockEnv() == FALSE)
-		{
-			MessageBox(NULL, _T("无法初始化Socket环境，请检查网络设置！"), _T("初始化错误!"), MB_OK | MB_ICONERROR);
-			exit(0);
-		}
-		//m_sock = socket(PF_INET, SOCK_STREAM, 0);
-		m_buffer.resize(BUFFER_SIZE);
-		memset(m_buffer.data(), 0, BUFFER_SIZE);
-		struct
-		{
-			UINT message;
-			MSGFUNC func;
-		}funcs[] =
-		{
-			{WM_SEND_PACK,&CClientSocket::SendPack},
-			{0,NULL}
-		};
-		for (int i = 0; funcs[i].message != 0; i++)
-		{
-			if (m_mapFunc.insert(std::pair<UINT, MSGFUNC>(funcs[i].message, funcs[i].func)).second == false)
-			{
-				TRACE("插入失败，消息值: %d 函数值: %08X 序号: %d\r\n", funcs[i].message, funcs[i].func, i);
-			}
-		}
-	}
+	CClientSocket();
 
 	~CClientSocket()
 	{
@@ -362,9 +359,9 @@ private:
 		return TRUE;
 	}
 
-	void threadFunc();
+	//void threadFunc();
 	void threadFunc2();
-	static /*unsigned __stdcall*/ void threadEntry(void* arg);
+	static unsigned __stdcall threadEntry(void* arg);
 
 	static void ReleaseInstance()
 	{

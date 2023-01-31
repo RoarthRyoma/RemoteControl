@@ -53,30 +53,10 @@ LRESULT CClientController::SendMessage(MSG msg)
 	return info.result;
 }
 
-int CClientController::SendCommandPacket(int nCmd, BYTE* pData /*= NULL*/, size_t nLength /*= 0*/, bool bAutoClose /*= true*/, std::list<CPacket>* pListPacket /*=nullptr*/)
+bool CClientController::SendCommandPacket(HWND hWnd, int nCmd, BYTE* pData /*= NULL*/, size_t nLength /*= 0*/, bool bAutoClose /*= true*/)
 {
-	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (hEvent == NULL) return -2;
-	//不应该直接发送，而是投入队列
-	std::list<CPacket> listPacket;//应答结果包
-	if (pListPacket == NULL)
-	{
-		pListPacket = &listPacket;
-	}
-	CClientSocket::getInstance()->SendPacket(CPacket(nCmd, pData, nLength, hEvent), *pListPacket, bAutoClose);
-	CloseHandle(hEvent);//回收资源句柄，防止资源耗尽
-	if (pListPacket->size() > 0)
-	{
-		return pListPacket->front().sCmd;
-	}
-	//int cmd = DealCommand();
-	//TRACE("ack: %d\r\n", cmd);
-	//if (bAutoClose)
-	//{
-	//	CloseSocket();
-	//}
-	//return cmd;
-	return -1;
+	TRACE("cmd:%d %s start %lld \r\n", nCmd, __FUNCTION__, GetTickCount64());
+	return CClientSocket::getInstance()->SendPacket(hWnd, CPacket(nCmd, pData, nLength), bAutoClose);
 }
 
 int CClientController::DownloadFile(CString strPath)
@@ -123,7 +103,9 @@ void CClientController::threadWatchScreen()
 		if (!m_watchDlg.isFull())//数据更新到缓存
 		{
 			std::list<CPacket> listPacket;
-			int ret = SendCommandPacket(6, NULL, 0, true, &listPacket);
+			int ret = SendCommandPacket(m_watchDlg.GetSafeHwnd(), 6, NULL, 0, true);
+			//todo: 添加消息响应函数 WM_SEND_PACK_ACK
+			//todo: 控制发送频率
 			if (ret == 6)
 			{
 				int res = CEdoyunTool::Byte2Image(m_watchDlg.GetImage(), listPacket.front().strData);
@@ -170,7 +152,7 @@ void CClientController::threadDownloadFile()
 	CClientSocket* pClient = CClientSocket::getInstance();
 	do 
 	{
-		int ret = SendCommandPacket(4, (BYTE*)(LPCSTR)m_strRemote, m_strRemote.GetLength(), false);
+		int ret = SendCommandPacket(m_remoteDlg, 4, (BYTE*)(LPCSTR)m_strRemote, m_strRemote.GetLength(), false);
 		if (ret < 0)
 		{
 			AfxMessageBox("下载文件命令执行失败!");

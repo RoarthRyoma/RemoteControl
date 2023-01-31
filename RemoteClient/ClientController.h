@@ -58,11 +58,14 @@ public:
 	///	7.锁机
 	///	8.解锁
 	/// </summary>
+	/// <param name="hWnd">数据包收到后需要应答的窗口</param>
 	/// <param name="nCmd">命令</param>
 	/// <param name="pData">数据</param>
 	/// <param name="nLength">数据长度</param>
-	/// <returns>返回命令值</returns>
-	int SendCommandPacket(int nCmd, BYTE* pData = NULL, size_t nLength = 0, bool bAutoClose = true, std::list<CPacket>* pListPacket = nullptr);
+	/// <param name="bAutoClose"></param>
+	/// <param name="pListPacket">应答包列表</param> //移除,现在转为消息处理
+	/// <returns>状态,true成功,false失败</returns>
+	bool SendCommandPacket(HWND hWnd, int nCmd, BYTE* pData = NULL, size_t nLength = 0, bool bAutoClose = true/*, std::list<CPacket>* pListPacket = nullptr*/);
 	int GetImage(CImage& image)
 	{
 		auto pClient = CClientSocket::getInstance();
