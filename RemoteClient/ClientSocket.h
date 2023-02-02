@@ -196,16 +196,19 @@ typedef struct PacketData
 {
 	std::string strData;
 	UINT nMode;
-	PacketData(const char* pData, size_t nLen, UINT mode)
+	WPARAM wParam;
+	PacketData(const char* pData, size_t nLen, UINT mode, WPARAM nParam = 0)
 	{
 		strData.resize(nLen);
 		memcpy((char*)strData.c_str(), pData, nLen);
 		nMode = mode;
+		wParam = nParam;
 	}
 	PacketData(const PacketData& data)
 	{
 		strData = data.strData;
 		nMode = data.nMode;
+		wParam = data.wParam;
 	}
 	PacketData& operator=(const PacketData& data)
 	{
@@ -213,6 +216,7 @@ typedef struct PacketData
 		{
 			strData = data.strData;
 			nMode = data.nMode;
+			wParam = data.wParam;
 		}
 		return *this;
 	}
@@ -265,7 +269,7 @@ public:
 	}
 
 	//bool SendPacket(const CPacket& pack, std::list<CPacket>& listPacket, bool isAutoClosed = true);
-	bool CClientSocket::SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed/*, WPARAM wParam*/ );
+	bool SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed = true, WPARAM wParam = 0);
 	bool GetFilePath(std::string& strPath)
 	{
 		if ((m_packet.sCmd >= 2) && (m_packet.sCmd <= 4))
@@ -347,7 +351,7 @@ private:
 		return send(m_sock, strOut.c_str(), strOut.size(), 0) > 0;
 	}
 
-	void CClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam);
+	void SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam);
 
 	BOOL InitSockEnv()
 	{

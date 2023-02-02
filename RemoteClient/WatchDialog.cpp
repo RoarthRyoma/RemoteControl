@@ -44,6 +44,7 @@ BEGIN_MESSAGE_MAP(CWatchDialog, CDialog)
 	ON_STN_CLICKED(IDC_WATCH, &CWatchDialog::OnStnClickedWatch)
 	ON_BN_CLICKED(IDC_BTN_LOCK, &CWatchDialog::OnBnClickedBtnLock)
 	ON_BN_CLICKED(IDC_BTN_UNLOCK, &CWatchDialog::OnBnClickedBtnUnlock)
+	ON_MESSAGE(WM_SEND_PACK_ACK, &CWatchDialog::OnSendPackAck)
 END_MESSAGE_MAP()
 
 
@@ -77,7 +78,7 @@ BOOL CWatchDialog::OnInitDialog()
 	CWatchDialog::SetWindowPos(NULL, 0, 0, temprect.Width(), temprect.Height(), SWP_NOZORDER | SWP_NOMOVE);
 	//MoveWindow(&temprect);
 	m_isFull = false;
-	SetTimer(0, 50, NULL);
+	//SetTimer(0, 50, NULL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
@@ -86,29 +87,80 @@ BOOL CWatchDialog::OnInitDialog()
 
 void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 {
-	if (nIDEvent == 0)
-	{
-		if (this->isFull())
-		{
-			//显示
-			CRect rect;
-			m_picture.GetWindowRect(rect);
-			//pParent->GetImage().BitBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, SRCCOPY);
-			m_nObjWidth = m_image.GetWidth();
-			m_nObjHeight = m_image.GetHeight();
-			m_image.StretchBlt(
-				m_picture.GetDC()->GetSafeHdc(), 0, 0,
-				rect.Width(), rect.Height(), SRCCOPY);
-			m_picture.InvalidateRect(NULL);
-			m_image.Destroy();
-			this->SetImageStatus();
-			TRACE("更新图片完成%d %d\r\n", m_nObjWidth, m_nObjHeight);
-		}
-	}
+	//if (nIDEvent == 0)
+	//{
+	//	if (this->isFull())
+	//	{
+	//		//显示
+	//		CRect rect;
+	//		m_picture.GetWindowRect(rect);
+	//		//pParent->GetImage().BitBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, SRCCOPY);
+	//		m_nObjWidth = m_image.GetWidth();
+	//		m_nObjHeight = m_image.GetHeight();
+	//		m_image.StretchBlt(
+	//			m_picture.GetDC()->GetSafeHdc(), 0, 0,
+	//			rect.Width(), rect.Height(), SRCCOPY);
+	//		m_picture.InvalidateRect(NULL);
+	//		m_image.Destroy();
+	//		this->SetImageStatus();
+	//		TRACE("更新图片完成%d %d\r\n", m_nObjWidth, m_nObjHeight);
+	//	}
+	//}
 
 	CDialog::OnTimer(nIDEvent);
 }
 
+
+LRESULT CWatchDialog::OnSendPackAck(WPARAM wParam, LPARAM lParam)
+{
+	if (lParam == -1 || lParam == -2)
+	{
+		//TODO:错误处理
+
+	}
+	else if (lParam == 1)
+	{
+		//对方关闭了套接字
+
+	}
+	else
+	{
+		CPacket* pPacket = (CPacket*)wParam;
+		if (pPacket != NULL)
+		{
+			switch (pPacket->sCmd)
+			{
+			case 6:
+			{
+				if (m_isFull)
+				{
+					CEdoyunTool::Byte2Image(m_image, pPacket->strData);
+					CRect rect;
+					m_picture.GetWindowRect(rect);
+					m_nObjWidth = m_image.GetWidth();
+					m_nObjHeight = m_image.GetHeight();
+					m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, rect.Width(), rect.Height(), SRCCOPY);
+					m_picture.InvalidateRect(NULL);
+					TRACE("更新图片完成！%d %d %08X\r\n", m_nObjWidth, m_nObjHeight, (HBITMAP)m_image);
+					m_image.Destroy();
+					m_isFull = false;
+				}
+				break;
+			}
+			case 5:
+				TRACE("远程端应答了鼠标操作！\r\n");
+				break;
+			case 7:
+			case 8:
+			default:
+				break;
+
+			}
+		}
+	}
+
+	return 0;
+}
 
 void CWatchDialog::OnLButtonDblClk(UINT nFlags, CPoint point)
 {

@@ -6,8 +6,9 @@
 #include "ClientSocket.h"
 #include "StatusDlg.h"
 
-//#define WM_SEND_PACKET (WM_USER +1) //发送数据包消息
-
+#ifndef WM_SEND_PACK_ACK
+#define WM_SEND_PACK_ACK (WM_USER+2)		//发送包数据应答
+#endif
 
 // CRemoteClientDlg dialog
 class CRemoteClientDlg : public CDialogEx
@@ -109,4 +110,5 @@ public:
 	//}
 	afx_msg void OnIpnFieldchangedIpaddressServ(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnEnChangeEditPort();
+	afx_msg LRESULT OnSendPackAck(WPARAM wParam, LPARAM lParam);
 };

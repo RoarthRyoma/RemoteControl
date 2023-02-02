@@ -65,13 +65,14 @@ public:
 	/// <param name="bAutoClose"></param>
 	/// <param name="pListPacket">应答包列表</param> //移除,现在转为消息处理
 	/// <returns>状态,true成功,false失败</returns>
-	bool SendCommandPacket(HWND hWnd, int nCmd, BYTE* pData = NULL, size_t nLength = 0, bool bAutoClose = true/*, std::list<CPacket>* pListPacket = nullptr*/);
+	bool SendCommandPacket(HWND hWnd, int nCmd, BYTE* pData = NULL, size_t nLength = 0, bool bAutoClose = true, WPARAM wParam = 0);
 	int GetImage(CImage& image)
 	{
 		auto pClient = CClientSocket::getInstance();
 		return CEdoyunTool::Byte2Image(image, pClient->GetPacket().strData);
 	}
 	int DownloadFile(CString strPath);
+	void DownloadEnd();
 	void StartWatchScreen();
 protected:
 	void threadWatchScreen();
