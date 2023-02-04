@@ -54,7 +54,7 @@ private:
 	/// <summary>
 	/// 加载文件信息
 	/// </summary>
-	void LoadFileInfo();
+	//void LoadFileInfo();
 	/// <summary>
 	/// 获取路径
 	/// </summary>
@@ -81,6 +81,8 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
+	void LoadFileInfo();
+
 	afx_msg void OnBnClickedBtnTest();
 	DWORD m_server_address;
 	CString m_port;

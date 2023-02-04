@@ -380,30 +380,8 @@ void CRemoteClientDlg::LoadFileInfo()
 	m_List.DeleteAllItems();
 
 	CString strPath = GetPath(hTreeSelected);
-	std::list<CPacket> listPacket;
+	TRACE("hTreeSelected %08X\r\n", hTreeSelected);
 	int nCmd = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 2, (BYTE*)(LPCTSTR)strPath, strPath.GetLength(), false, (WPARAM)hTreeSelected);
-	if (listPacket.size() > 0)
-	{
-		for (std::list<CPacket>::iterator it = listPacket.begin();it != listPacket.end(); it++)
-		{
-			PFILEINFO pinfo = (PFILEINFO)(*it).strData.c_str();
-			if (pinfo->HasNext == FALSE) continue;
-			if (pinfo->IsDirectory)
-			{
-				//排除 . 和 .. 两个目录
-				if (CString(pinfo->szFileName) == "." || (CString(pinfo->szFileName) == ".."))
-				{
-					continue;
-				}
-				HTREEITEM hTemp = m_Tree.InsertItem(pinfo->szFileName, hTreeSelected, TVI_LAST);
-				m_Tree.InsertItem("", hTemp, TVI_LAST);
-			}
-			else
-			{
-				m_List.InsertItem(0, pinfo->szFileName);
-			}
-		}
-	}
 }
 
 CString CRemoteClientDlg::GetPath(HTREEITEM hTree)
@@ -684,6 +662,7 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam)
 			case 2:
 			{
 				PFILEINFO pinfo = (PFILEINFO)head.strData.c_str();
+				TRACE("hasnext %d isdirectory %d %s\r\n", pinfo->HasNext, pinfo->IsDirectory, pinfo->szFileName);
 				if (pinfo->HasNext == FALSE) break;
 				if (pinfo->IsDirectory)
 				{
@@ -692,8 +671,10 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam)
 					{
 						break;
 					}
+					TRACE("hselected %08X\r\n", lParam);
 					HTREEITEM hTemp = m_Tree.InsertItem(pinfo->szFileName, (HTREEITEM)lParam, TVI_LAST);
 					m_Tree.InsertItem("", hTemp, TVI_LAST);
+					m_Tree.Expand((HTREEITEM)lParam, TVE_EXPAND);
 				}
 				else
 				{
@@ -708,6 +689,7 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam)
 			{
 				static LONGLONG length = 0;
 				static LONGLONG index = 0;
+				TRACE("length %d index %d \r\n", length, index);
 				if (length == 0)
 				{
 					length = *(long long*)head.strData.c_str();
@@ -718,7 +700,7 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam)
 						break;
 					}
 				}
-				else if(length > 0 && index > 0)
+				else if(length > 0 && index >= length)
 				{
 					fclose((FILE*)lParam);
 					length = 0;

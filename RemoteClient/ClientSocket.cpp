@@ -235,6 +235,8 @@ void CClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 	PACKET_DATA data = *(PACKET_DATA*)wParam;
 	delete (PACKET_DATA*)wParam;
 	HWND hWnd = (HWND)lParam;
+	size_t nTemp = data.strData.size();
+	CPacket current((BYTE*)data.strData.c_str(), nTemp);
 	if (InitSocket())
 	{
 		int ret = send(m_sock, (char*)data.strData.c_str(), (int)data.strData.size(), 0);
@@ -268,8 +270,9 @@ void CClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 				}
 				else
 				{
+					TRACE("recv failed! length %d index %d cmd %d\r\n", length, index, current.sCmd);
 					CloseSocket();
-					::SendMessage(hWnd, WM_SEND_PACK_ACK, NULL, 1);
+					::SendMessage(hWnd, WM_SEND_PACK_ACK, (WPARAM)new CPacket(current.sCmd, NULL, 0), 1);
 				}
 			}
 		}
