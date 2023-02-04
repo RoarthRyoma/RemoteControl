@@ -132,7 +132,7 @@ BOOL CRemoteClientDlg::OnInitDialog()
 	// TODO: Add extra initialization here
 	UpdateData(TRUE);
 	//m_server_address = 0x7F000001;//127.0.0.1
-	m_server_address = 0xC0A80B81;	//192.168.11.129
+	m_server_address = 0xC0A80B82;	//192.168.11.130
 	m_port = _T("9527");
 	CClientController::getInstance()->UpdateAddress(m_server_address, atoi((LPCTSTR)m_port));
 	UpdateData(FALSE);
@@ -654,11 +654,11 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam)
 	}
 	else
 	{
-		CPacket* pPacket = (CPacket*)wParam;
-		if (pPacket != NULL)
+		if (wParam != NULL)
 		{
-			CPacket& head = *pPacket;
-			switch (pPacket->sCmd)
+			CPacket head = *(CPacket*)wParam;
+			delete (CPacket*)wParam;
+			switch (head.sCmd)
 			{
 			case 1://获取驱动信息
 			{
@@ -750,7 +750,6 @@ LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParam, LPARAM lParam)
 			default:
 				TRACE("Unknow data received: %d\r\n", head.sCmd);
 				break;
-
 			}
 		}
 	}

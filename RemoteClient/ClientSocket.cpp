@@ -37,14 +37,11 @@ bool CClientSocket::InitSocket()
 
 bool CClientSocket::SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed/*=true*/, WPARAM wParam/*=0*/)
 {
-	if (m_hThread == INVALID_HANDLE_VALUE)
-	{
-		m_hThread = (HANDLE)_beginthreadex(NULL, 0, &CClientSocket::threadEntry, this, 0, &m_nThreadID);
-	}
 	UINT nMode = isAutoClosed ? CSM_AUTOCLOSE : 0;
 	std::string strOut;
 	pack.Data(strOut);
-	return PostThreadMessage(m_nThreadID, WM_SEND_PACK, (WPARAM)new PACKET_DATA(strOut.c_str(), strOut.size(), nMode, wParam), (LPARAM)hWnd);
+	bool ret = PostThreadMessage(m_nThreadID, WM_SEND_PACK, (WPARAM)new PACKET_DATA(strOut.c_str(), strOut.size(), nMode, wParam), (LPARAM)hWnd);
+	return ret;
 }
 
 
@@ -87,7 +84,13 @@ CClientSocket::CClientSocket() : m_nIP(INADDR_ANY), m_nPort(0), m_sock(INVALID_S
 		MessageBox(NULL, _T("无法初始化Socket环境，请检查网络设置！"), _T("初始化错误!"), MB_OK | MB_ICONERROR);
 		exit(0);
 	}
-	//m_sock = socket(PF_INET, SOCK_STREAM, 0);
+	m_eventInvoke = CreateEvent(NULL, TRUE, FALSE, NULL);
+	m_hThread = (HANDLE)_beginthreadex(NULL, 0, &CClientSocket::threadEntry, this, 0, &m_nThreadID);
+	if (WaitForSingleObject(m_eventInvoke, 100) == WAIT_TIMEOUT)
+	{
+		TRACE("网络消息处理线程启动失败了！\r\n");
+	}
+	CloseHandle(m_eventInvoke);
 	m_buffer.resize(BUFFER_SIZE);
 	memset(m_buffer.data(), 0, BUFFER_SIZE);
 	struct
@@ -200,6 +203,7 @@ CClientSocket::CClientSocket(const CClientSocket& s)
 
 void CClientSocket::threadFunc2()
 {
+	SetEvent(m_eventInvoke);
 	MSG msg;
 	while (::GetMessage(&msg, NULL, 0, 0))
 	{
