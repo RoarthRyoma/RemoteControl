@@ -29,16 +29,59 @@ using namespace std;
 //【复制这些dll到system32下面或者syswOW64下面】
 //system32下面，多是64位程序 SysWOW64下面多是32位程序
 //【使用静态库，而非动态库】
+
+bool WriteRegisterTable(const CString& strPath)
+{
+	CString strSubKey = _T("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run");
+	char sPath[MAX_PATH] = "";
+	char sSys[MAX_PATH] = "";
+	string strExe = "\\RemoteControl.exe ";
+	GetCurrentDirectoryA(MAX_PATH, sPath);
+	GetSystemDirectoryA(sSys, sizeof(sSys));
+	string strCmd = "mklink " + string(sSys) + strExe + string(sPath) + strExe;
+	int ret = system(strCmd.c_str());
+    TRACE("ret = %d\r\n", ret);
+	HKEY hKey = NULL;
+	ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, strSubKey, 0, KEY_ALL_ACCESS | KEY_WOW64_64KEY, &hKey);
+	if (ret != ERROR_SUCCESS)
+	{
+		RegCloseKey(hKey);
+		MessageBox(NULL, _T("设置自动开机启动失败！是否权限不足? \r\n程序启动失败!"), _T("错误"), MB_ICONERROR | MB_TOPMOST);
+		return false;
+	}
+	ret = RegSetValueEx(hKey, _T("RemoteControl"), 0, REG_EXPAND_SZ, (BYTE*)(LPCTSTR)strPath, strPath.GetLength() * sizeof(TCHAR));
+	if (ret != ERROR_SUCCESS)
+	{
+		RegCloseKey(hKey);
+		MessageBox(NULL, _T("设置自动开机启动失败！是否权限不足? \r\n程序启动失败!"), _T("错误"), MB_ICONERROR | MB_TOPMOST);
+		return false;
+	}
+	RegCloseKey(hKey);
+    return true;
+}
+
+//通过修改开机启动文件来实现开机启动
+void WriteStartupDir(const CString& strPath)
+{
+    CString strCmd = GetCommandLine();
+    strCmd.Replace(_T("\""), _T(""));
+    BOOL ret = CopyFile(strCmd, strPath, FALSE);
+    if (ret == FALSE)
+    {
+        MessageBox(NULL, _T("复制文件失败，是否权限不足?\r\n"), _T("错误"), MB_ICONERROR | MB_TOPMOST);
+        ::exit(0);
+    }
+}
+
 bool ChooseAutoInvoke()
 {
-    //TCHAR wcsSystem[MAX_PATH] = _T("");
-    //GetSystemDirectory(wcsSystem, MAX_PATH);
-	CString strPath = /*CString(wcsSystem) + */CString(_T("C:\\Windows\\SysWOW64\\RemoteControl.exe"));
+	//CString strPath = /*CString(wcsSystem) + */CString(_T("C:\\Windows\\SysWOW64\\RemoteControl.exe"));
+
+	CString strPath = _T("C:\\Users\\q1420\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\RemoteControl.exe");
     if (PathFileExists(strPath))
     {
         return true;
     }
-    CString strSubKey = _T("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run");
 	CString strInfo = _T("该程序只允许用于合法的用途！\n");
 	strInfo += _T("继续运行该程序，将使得这台机器处于被监控状态！\n");
 	strInfo += _T("如果您不希望这样，请按下“取消”按钮，退出程序！\n");
@@ -47,29 +90,8 @@ bool ChooseAutoInvoke()
     int ret = MessageBox(NULL, strInfo, _T("警告"), MB_YESNOCANCEL | MB_ICONWARNING | MB_TOPMOST);
 	if (ret == IDYES)
 	{
-        char sPath[MAX_PATH] = "";
-        char sSys[MAX_PATH] = "";
-        string strExe = "\\RemoteControl.exe ";
-        GetCurrentDirectoryA(MAX_PATH, sPath);
-        GetSystemDirectoryA(sSys, sizeof(sSys));
-        string strCmd = "mklink " + string(sSys) + strExe + string(sPath) + strExe;
-        system(strCmd.c_str());
-		HKEY hKey = NULL;
-		ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, strSubKey, 0, KEY_ALL_ACCESS | KEY_WOW64_64KEY, &hKey);
-		if (ret != ERROR_SUCCESS)
-		{
-			RegCloseKey(hKey);
-			MessageBox(NULL, _T("设置自动开机启动失败！是否权限不足? \r\n程序启动失败!"), _T("错误"), MB_ICONERROR | MB_TOPMOST);
-			return false;
-		}
-        ret = RegSetValueEx(hKey, _T("RemoteControl"), 0, REG_EXPAND_SZ, (BYTE*)(LPCTSTR)strPath, strPath.GetLength() * sizeof(TCHAR));
-		if (ret != ERROR_SUCCESS)
-		{
-			RegCloseKey(hKey);
-			MessageBox(NULL, _T("设置自动开机启动失败！是否权限不足? \r\n程序启动失败!"), _T("错误"), MB_ICONERROR | MB_TOPMOST);
-			return false;
-		}
-		RegCloseKey(hKey);
+        //WriteRegisterTable();
+        WriteStartupDir(strPath);
 		return true;
 	}
 	else if (ret == IDCANCEL)
