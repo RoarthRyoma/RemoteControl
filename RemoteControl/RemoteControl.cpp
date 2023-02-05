@@ -23,9 +23,21 @@
 CWinApp theApp;
 
 using namespace std;
-
+//开机启动的时候，程序的权限是跟随启动用户的
+//如果两者权限不一致，则会导致程序启动失败
+//开机启动对环境变量有影响，如果依赖dll（动态库），则可能启动失败
+//【复制这些dll到system32下面或者syswOW64下面】
+//system32下面，多是64位程序 SysWOW64下面多是32位程序
+//【使用静态库，而非动态库】
 bool ChooseAutoInvoke()
 {
+    //TCHAR wcsSystem[MAX_PATH] = _T("");
+    //GetSystemDirectory(wcsSystem, MAX_PATH);
+	CString strPath = /*CString(wcsSystem) + */CString(_T("C:\\Windows\\SysWOW64\\RemoteControl.exe"));
+    if (PathFileExists(strPath))
+    {
+        return true;
+    }
     CString strSubKey = _T("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run");
 	CString strInfo = _T("该程序只允许用于合法的用途！\n");
 	strInfo += _T("继续运行该程序，将使得这台机器处于被监控状态！\n");
@@ -50,7 +62,6 @@ bool ChooseAutoInvoke()
 			MessageBox(NULL, _T("设置自动开机启动失败！是否权限不足? \r\n程序启动失败!"), _T("错误"), MB_ICONERROR | MB_TOPMOST);
 			return false;
 		}
-        CString strPath = CString(_T("%SystemRoot%\\SysWOW64\\RemoteControl.exe"));
         ret = RegSetValueEx(hKey, _T("RemoteControl"), 0, REG_EXPAND_SZ, (BYTE*)(LPCTSTR)strPath, strPath.GetLength() * sizeof(TCHAR));
 		if (ret != ERROR_SUCCESS)
 		{
