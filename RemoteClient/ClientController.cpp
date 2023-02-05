@@ -42,16 +42,16 @@ int CClientController::Invoke(CWnd*& pMainWnd)
 	return m_remoteDlg.DoModal();
 }
 
-LRESULT CClientController::SendMessage(MSG msg)
-{
-	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (hEvent == NULL) return -2;
-	MSGINFO info(msg);
-	PostThreadMessage(m_nThreadID, WM_SEND_MESSAGE, (WPARAM)&info, (LPARAM)&hEvent);
-	WaitForSingleObject(hEvent, INFINITE);
-	CloseHandle(hEvent);
-	return info.result;
-}
+//LRESULT CClientController::SendMessage(MSG msg)
+//{
+//	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+//	if (hEvent == NULL) return -2;
+//	MSGINFO info(msg);
+//	PostThreadMessage(m_nThreadID, WM_SEND_MESSAGE, (WPARAM)&info, (LPARAM)&hEvent);
+//	WaitForSingleObject(hEvent, INFINITE);
+//	CloseHandle(hEvent);
+//	return info.result;
+//}
 
 bool CClientController::SendCommandPacket(HWND hWnd, int nCmd, BYTE* pData /*= NULL*/, size_t nLength /*= 0*/, bool bAutoClose /*= true*/, WPARAM wParam /*= 0*/)
 {
@@ -102,7 +102,6 @@ void CClientController::DownloadEnd()
 void CClientController::StartWatchScreen()
 {
 	m_isClosed = false;
-	//m_watchDlg.SetParent(&m_remoteDlg);
 	m_hThreadWatch = (HANDLE)_beginthread(&CClientController::threadWatchScreenEntry, 0, this);
 	m_watchDlg.DoModal();
 	m_isClosed = true;
@@ -150,63 +149,63 @@ void CClientController::threadWatchScreenEntry(void* arg)
 
 }
 
-void CClientController::threadDownloadFile()
-{
-	FILE* pFile = NULL;
-	errno_t err = fopen_s(&pFile, m_strLocal, "wb+");
-	if (err != 0)
-	{
-		AfxMessageBox(_T("没有权限保存该文件或文件无法创建!"));
-		m_statusDlg.ShowWindow(SW_HIDE);
-		m_remoteDlg.EndWaitCursor();
-		return;
-	}
-	CClientSocket* pClient = CClientSocket::getInstance();
-	do 
-	{
-		int ret = SendCommandPacket(m_remoteDlg, 4, (BYTE*)(LPCSTR)m_strRemote, m_strRemote.GetLength(), false, (WPARAM)pFile);
-		if (ret < 0)
-		{
-			AfxMessageBox("下载文件命令执行失败!");
-			TRACE("执行download ret: %d\r\n", ret);
-			break;
-		}
-		long long nLength = *(long long*)pClient->GetPacket().strData.c_str();
-		if (nLength == 0)
-		{
-			AfxMessageBox("文件长度为0或无法读取文件");
-			//return;
-			break;
-		}
-		long long nCount = 0;
-		while (nCount < nLength)
-		{
-			ret = pClient->DealCommand();
-			if (ret < 0)
-			{
-				AfxMessageBox("传输失败!");
-				TRACE("传输失败 ret:%d", ret);
-				break;
-			}
-			fwrite(pClient->GetPacket().strData.c_str(), 1, pClient->GetPacket().strData.size(), pFile);
-			nCount += pClient->GetPacket().strData.size();
-		}
-	} while (false);
-	fclose(pFile);
-	pClient->CloseSocket();
+//void CClientController::threadDownloadFile()
+//{
+//	FILE* pFile = NULL;
+//	errno_t err = fopen_s(&pFile, m_strLocal, "wb+");
+//	if (err != 0)
+//	{
+//		AfxMessageBox(_T("没有权限保存该文件或文件无法创建!"));
+//		m_statusDlg.ShowWindow(SW_HIDE);
+//		m_remoteDlg.EndWaitCursor();
+//		return;
+//	}
+//	CClientSocket* pClient = CClientSocket::getInstance();
+//	do 
+//	{
+//		int ret = SendCommandPacket(m_remoteDlg, 4, (BYTE*)(LPCSTR)m_strRemote, m_strRemote.GetLength(), false, (WPARAM)pFile);
+//		if (ret < 0)
+//		{
+//			AfxMessageBox("下载文件命令执行失败!");
+//			TRACE("执行download ret: %d\r\n", ret);
+//			break;
+//		}
+//		long long nLength = *(long long*)pClient->GetPacket().strData.c_str();
+//		if (nLength == 0)
+//		{
+//			AfxMessageBox("文件长度为0或无法读取文件");
+//			//return;
+//			break;
+//		}
+//		long long nCount = 0;
+//		while (nCount < nLength)
+//		{
+//			ret = pClient->DealCommand();
+//			if (ret < 0)
+//			{
+//				AfxMessageBox("传输失败!");
+//				TRACE("传输失败 ret:%d", ret);
+//				break;
+//			}
+//			fwrite(pClient->GetPacket().strData.c_str(), 1, pClient->GetPacket().strData.size(), pFile);
+//			nCount += pClient->GetPacket().strData.size();
+//		}
+//	} while (false);
+//	fclose(pFile);
+//	pClient->CloseSocket();
+//
+//	m_statusDlg.ShowWindow(SW_HIDE);
+//	m_remoteDlg.EndWaitCursor();
+//	m_remoteDlg.MessageBox(_T("下载完成!!!"), _T("完成"));
+//	m_remoteDlg.LoadFileInfo();
+//}
 
-	m_statusDlg.ShowWindow(SW_HIDE);
-	m_remoteDlg.EndWaitCursor();
-	m_remoteDlg.MessageBox(_T("下载完成!!!"), _T("完成"));
-	m_remoteDlg.LoadFileInfo();
-}
-
-void CClientController::threadDownloadEntry(void* arg)
-{
-	CClientController* that = (CClientController*)arg;
-	that->threadDownloadFile();
-	_endthreadex(0);
-}
+//void CClientController::threadDownloadEntry(void* arg)
+//{
+//	CClientController* that = (CClientController*)arg;
+//	that->threadDownloadFile();
+//	_endthreadex(0);
+//}
 
 void CClientController::threadFunc()
 {
