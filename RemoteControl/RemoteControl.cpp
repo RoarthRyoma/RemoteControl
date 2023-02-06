@@ -101,6 +101,42 @@ bool ChooseAutoInvoke()
 	return true;
 }
 
+void ShowError()
+{
+	LPWSTR lpMessageBuf = NULL;
+    //格式化消息，分配缓存空间
+    //获取当前线程最后一次出错时的编号
+    //出错描述语言
+	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&lpMessageBuf, 0, NULL);
+	OutputDebugString(lpMessageBuf);
+	MessageBox(NULL, lpMessageBuf, _T("发生错误！"), 0);
+	LocalFree(lpMessageBuf);
+}
+
+bool IsAdmin()
+{
+	HANDLE hToken = NULL;
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+	{
+		ShowError();
+		return false;
+	}
+	TOKEN_ELEVATION eve;
+	DWORD len = 0;
+	if (GetTokenInformation(hToken, TokenElevation, &eve, sizeof(eve), &len) == FALSE)
+	{
+		ShowError();
+		return false;
+	}
+	if (len == sizeof(eve))
+	{
+		CloseHandle(hToken);
+		return eve.TokenIsElevated;
+	}
+	printf("length of tokeninforation is %d\r\n", len);
+	return false;
+}
+
 //void Dump(BYTE* pData, size_t nSize)
 //{
 //    std::string strOut;
@@ -561,6 +597,16 @@ bool ChooseAutoInvoke()
 
 int main()
 {
+	if (IsAdmin())
+	{
+		OutputDebugString(L"current is run as administrator!\r\n");
+	}
+	else
+	{
+		OutputDebugString(L"current is run as normal user!\r\n");
+	}
+
+
     int nRetCode = 0;
 
     HMODULE hModule = ::GetModuleHandle(nullptr);
