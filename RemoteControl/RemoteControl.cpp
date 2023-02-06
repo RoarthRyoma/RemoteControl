@@ -137,6 +137,36 @@ bool IsAdmin()
 	return false;
 }
 
+void RunAsAdmin()
+{
+	HANDLE hToken = NULL;
+	BOOL ret = LogonUser(L"Administrator", NULL, NULL, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &hToken);
+	if (!ret)
+	{
+		ShowError();
+		MessageBox(NULL, _T("登陆错误! "), _T("程序错误！"), 0);
+		::exit(0);
+	}
+	OutputDebugString(L"Logon administrator success!\r\n");
+	STARTUPINFO si = { 0 };
+	PROCESS_INFORMATION pi = { 0 };
+	TCHAR sPath[MAX_PATH] = _T("");
+	GetCurrentDirectory(MAX_PATH, sPath);
+	CString strCmd = sPath;
+	strCmd += _T("\\RemoteControl.exe");
+	ret = CreateProcessWithLogonW(_T("Administrator"), NULL, NULL, LOGON_WITH_PROFILE, NULL, (LPWSTR)(LPCWSTR)strCmd, CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi);
+	CloseHandle(hToken);
+	if (!ret)
+	{
+		ShowError();
+		MessageBox(NULL, strCmd, _T("创建进程失败！"), 0);
+		::exit(0);
+	}
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+}
+
 //void Dump(BYTE* pData, size_t nSize)
 //{
 //    std::string strOut;
@@ -597,18 +627,7 @@ bool IsAdmin()
 
 int main()
 {
-	if (IsAdmin())
-	{
-		OutputDebugString(L"current is run as administrator!\r\n");
-	}
-	else
-	{
-		OutputDebugString(L"current is run as normal user!\r\n");
-	}
-
-
-    int nRetCode = 0;
-
+	int nRetCode = 0;
     HMODULE hModule = ::GetModuleHandle(nullptr);
 
     if (hModule != nullptr)
@@ -622,6 +641,18 @@ int main()
         }
         else
         {
+			if (IsAdmin())
+			{
+				OutputDebugString(L"current is run as administrator!\r\n");
+			}
+			else
+			{
+				OutputDebugString(L"current is run as normal user!\r\n");
+				//MessageBox(0, L"current is run as normal user!\r\n", L"提示", 0);
+				RunAsAdmin();
+				return nRetCode;
+			}
+
             ChooseAutoInvoke();
 			CServerSocket* pserver = CServerSocket::getInstance();
             CCommand cmd;
