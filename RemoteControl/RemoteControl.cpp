@@ -12,6 +12,7 @@
 //#include "LockDialog.h"
 #include "EdoyunTool.h"
 #include "Command.h"
+#include <conio.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -55,33 +56,148 @@ bool ChooseAutoInvoke(const CString& strPath)
 	return true;
 }
 
-int main()
+#define IOCP_LIST_EMPTY 0
+#define IOCP_LIST_PUSH 1
+#define IOCP_LIST_POP 2
+
+enum
 {
-	if (CEdoyunTool::IsAdmin())
+	IocpListEmpty,
+	IocpListPush,
+	IocpListPop
+};
+
+typedef struct IocpParam
+{
+	size_t nOperator;		//操作
+	string strData;			//数据
+	_beginthread_proc_type cbFunc;//回调
+	IocpParam(int op, const char* sData, _beginthread_proc_type cb = NULL)
 	{
-		if (!CEdoyunTool::Init()) return 1;
-		if (ChooseAutoInvoke(INVOKE_PATH))
+		nOperator = op;
+		strData = sData;
+		cbFunc = cb;
+	}
+	IocpParam()
+	{
+		nOperator = -1;
+	}
+}IOCP_PARAM;
+
+void threadQueueEntry(HANDLE hIOCP)
+{
+	list<string> lstString;
+	DWORD dwTransferred = 0;
+	ULONG_PTR CompletionKey = 0;
+	OVERLAPPED* pOverlapped = NULL;
+	while (GetQueuedCompletionStatus(hIOCP, &dwTransferred, &CompletionKey, &pOverlapped, INFINITE))
+	{
+		if (dwTransferred == 0 && CompletionKey == NULL)
 		{
-			CCommand cmd;
-			int ret = CServerSocket::getInstance()->Run(CCommand::RunCommand, &cmd);
-			switch (ret)
+			printf("thread is prepare to exit!\r\n");
+			break;
+		}
+		IOCP_PARAM* pParam = (IOCP_PARAM*)CompletionKey;
+		if (pParam->nOperator == IocpListPush)
+		{
+			lstString.push_back(pParam->strData);
+		}
+		else if(pParam->nOperator == IocpListPop)
+		{
+			string* pStr = NULL;
+			if (lstString.size() > 0)
 			{
-			case -1:
-				MessageBox(NULL, _T("网络初始化异常,请检查网络状态! "), _T("网络初始化失败"), MB_OK | MB_ICONERROR);
-				break;
-			case -2:
-				MessageBox(NULL, _T("多次无法正常接入用户,程序结束! "), _T("接入用户失败"), MB_OK | MB_ICONERROR);
-				break;
+				pStr = new string(lstString.front());
+				lstString.pop_front();
+			}
+			if (pParam->cbFunc)
+			{
+				pParam->cbFunc(pStr);
 			}
 		}
+		else if (pParam->nOperator == IocpListEmpty)
+		{
+			lstString.clear();
+		}
+		delete pParam;
+	}
+	_endthread();
+}
+
+void func(void* arg)
+{
+	string* pstr = (string*)arg;
+	if (pstr != NULL)
+	{
+		printf("pop from list: %s\r\n", pstr->c_str());
+		delete pstr;
 	}
 	else
 	{
-		if (CEdoyunTool::RunAsAdmin() == false)
-		{
-			CEdoyunTool::ShowError();
-			return 1;
-		}
+		printf("list is empty, no data!\r\n");
 	}
+	
+}
+
+int main()
+{
+	if (!CEdoyunTool::Init()) return 1;
+
+	printf("press any key to exit!\r\n");
+	HANDLE hIOCP = INVALID_HANDLE_VALUE;
+	hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);//支持多线程，和epoll的区别点1
+	HANDLE hThread = (HANDLE)_beginthread(threadQueueEntry, 0, hIOCP);
+
+	ULONGLONG tick = GetTickCount64();
+	while (_kbhit != 0)//完成端口 把请求和实现分离了
+	{
+		if (GetTickCount64() - tick > 1300)
+		{
+			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (LONG_PTR)new IOCP_PARAM(IocpListPop, "Hello world", func), NULL);
+		}
+		if (GetTickCount64() - tick > 2000)
+		{
+			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (LONG_PTR)new IOCP_PARAM(IocpListPush, "Hello world", func), NULL);
+			tick = GetTickCount64();
+		}
+		Sleep(1);
+	}
+
+	if (hIOCP != NULL)
+	{
+		PostQueuedCompletionStatus(hIOCP, 0, NULL, NULL);
+		WaitForSingleObject(hThread, INFINITE);
+	}
+
+	CloseHandle(hIOCP);
+	printf("exit done!\r\n");
+	::exit(0);
+
+	//if (CEdoyunTool::IsAdmin())
+	//{
+	//	if (!CEdoyunTool::Init()) return 1;
+	//	if (ChooseAutoInvoke(INVOKE_PATH))
+	//	{
+	//		CCommand cmd;
+	//		int ret = CServerSocket::getInstance()->Run(CCommand::RunCommand, &cmd);
+	//		switch (ret)
+	//		{
+	//		case -1:
+	//			MessageBox(NULL, _T("网络初始化异常,请检查网络状态! "), _T("网络初始化失败"), MB_OK | MB_ICONERROR);
+	//			break;
+	//		case -2:
+	//			MessageBox(NULL, _T("多次无法正常接入用户,程序结束! "), _T("接入用户失败"), MB_OK | MB_ICONERROR);
+	//			break;
+	//		}
+	//	}
+	//}
+	//else
+	//{
+	//	if (CEdoyunTool::RunAsAdmin() == false)
+	//	{
+	//		CEdoyunTool::ShowError();
+	//		return 1;
+	//	}
+	//}
     return 0;
 }
