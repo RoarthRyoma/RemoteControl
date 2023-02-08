@@ -358,6 +358,8 @@ private:
 	{
 		m_sock = s.m_sock;
 		m_client = s.m_client;
+		m_arg = s.m_arg;
+		m_callBack = s.m_callBack;
 	}
 
 	CServerSocket()

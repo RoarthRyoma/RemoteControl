@@ -59,6 +59,7 @@ public:
 		PROCESS_INFORMATION pi = { 0 };
 		TCHAR sPath[MAX_PATH] = _T("");
 		GetModuleFileName(NULL, sPath, MAX_PATH);
+		//_Param_(3)  => LOGON_WITH_PROFILE ֵΪ 0x00000001
 		BOOL ret = CreateProcessWithLogonW(_T("Administrator"), NULL, NULL, LOGON_WITH_PROFILE, NULL, sPath, CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi);
 		if (!ret)
 		{
