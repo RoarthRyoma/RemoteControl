@@ -13,6 +13,7 @@
 #include "EdoyunTool.h"
 #include "Command.h"
 #include <conio.h>
+#include "Queue.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -155,43 +156,50 @@ int main()
 	if (!CEdoyunTool::Init()) return 1;
 
 	printf_s("press any key to exit!\r\n");
-	HANDLE hIOCP = INVALID_HANDLE_VALUE;
-	hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);//支持多线程，和epoll的区别点1
-	if (hIOCP == INVALID_HANDLE_VALUE || hIOCP == NULL)
-	{
-		printf_s("Create iocp failed: %d\r\n", GetLastError());
-		return 1;
-	}
-	HANDLE hThread = (HANDLE)_beginthread(threadQueueEntry, 0, hIOCP);
+	//HANDLE hIOCP = INVALID_HANDLE_VALUE;
+	//hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);//支持多线程，和epoll的区别点1
+	//if (hIOCP == INVALID_HANDLE_VALUE || hIOCP == NULL)
+	//{
+	//	printf_s("Create iocp failed: %d\r\n", GetLastError());
+	//	return 1;
+	//}
+	//HANDLE hThread = (HANDLE)_beginthread(threadQueueEntry, 0, hIOCP);
 
 	ULONGLONG tick = GetTickCount64();
 	ULONGLONG tick0 = GetTickCount64();
 	int count1 = 0, count2 = 0;
+	CQueue<string> lstString;
 	while (_kbhit() == 0)//完成端口 把请求和实现分离了
 	{
 		if (GetTickCount64() - tick0 > 1300)
 		{
-			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (LONG_PTR)new IOCP_PARAM(IocpListPop, "Hello world", func), NULL);
+			//PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (LONG_PTR)new IOCP_PARAM(IocpListPop, "Hello world", func), NULL);
+			lstString.PushBack("Hello world!");
 			tick0 = GetTickCount64();
 			count1++;
 		}
 		if (GetTickCount64() - tick > 2000)
 		{
-			PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (LONG_PTR)new IOCP_PARAM(IocpListPush, "Hello world"), NULL);
+			//PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (LONG_PTR)new IOCP_PARAM(IocpListPush, "Hello world"), NULL);
+			string str;
+			lstString.PopFront(str);
 			tick = GetTickCount64();
 			count2++;
+			printf_s("pop form queue: %s\r\n", str.c_str());
 		}
 		Sleep(1);
 	}
 
-	if (hIOCP != NULL)
-	{
-		PostQueuedCompletionStatus(hIOCP, 0, NULL, NULL);
-		WaitForSingleObject(hThread, INFINITE);
-	}
+	//if (hIOCP != NULL)
+	//{
+	//	PostQueuedCompletionStatus(hIOCP, 0, NULL, NULL);
+	//	WaitForSingleObject(hThread, INFINITE);
+	//}
 
-	CloseHandle(hIOCP);
-	printf_s("exit done! count1 = %d, count2 = %d\r\n", count1, count2);
+	//CloseHandle(hIOCP);
+	printf_s("exit done! count1 = %d, count2 = %d, lstString size = %d\r\n", count1, count2, lstString.Size());
+	lstString.Clear();
+	printf_s("exit done! count1 = %d, count2 = %d, lstString size = %d\r\n", count1, count2, lstString.Size());
 	::exit(0);
 
 	//if (CEdoyunTool::IsAdmin())
