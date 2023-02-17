@@ -151,56 +151,61 @@ void func(void* arg)
 	
 }
 
-int main()
+void test(CQueue<string>& lstString, list<string>& lstData)
 {
-	if (!CEdoyunTool::Init()) return 1;
-
-	printf_s("press any key to exit!\r\n");
-	//HANDLE hIOCP = INVALID_HANDLE_VALUE;
-	//hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);//支持多线程，和epoll的区别点1
-	//if (hIOCP == INVALID_HANDLE_VALUE || hIOCP == NULL)
-	//{
-	//	printf_s("Create iocp failed: %d\r\n", GetLastError());
-	//	return 1;
-	//}
-	//HANDLE hThread = (HANDLE)_beginthread(threadQueueEntry, 0, hIOCP);
-
+	//printf_s("press any key to exit!\r\n");
 	ULONGLONG tick = GetTickCount64();
 	ULONGLONG tick0 = GetTickCount64();
-	int count1 = 0, count2 = 0;
-	CQueue<string> lstString;
-	while (_kbhit() == 0)//完成端口 把请求和实现分离了
+	ULONGLONG total = GetTickCount64();
+	//while (_kbhit() == 0)//完成端口 把请求和实现分离了
+	while (GetTickCount64() - total <= 1000)
 	{
-		if (GetTickCount64() - tick0 > 1300)
-		{
-			//PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (LONG_PTR)new IOCP_PARAM(IocpListPop, "Hello world", func), NULL);
+		//if (GetTickCount64() - tick0 > 5)
+		//{
 			lstString.PushBack("Hello world!");
 			tick0 = GetTickCount64();
-			count1++;
-		}
-		if (GetTickCount64() - tick > 2000)
-		{
-			//PostQueuedCompletionStatus(hIOCP, sizeof(IOCP_PARAM), (LONG_PTR)new IOCP_PARAM(IocpListPush, "Hello world"), NULL);
+		//}
+	}
+	size_t count = lstString.Size();
+	printf_s("exit done! lstString size = %d\r\n", count);
+	total = GetTickCount64();
+	while(GetTickCount64() - total <= 1000)
+	{
+		//if (GetTickCount64() - tick > 5)
+		//{
 			string str;
 			lstString.PopFront(str);
 			tick = GetTickCount64();
-			count2++;
-			printf_s("pop form queue: %s\r\n", str.c_str());
-		}
-		Sleep(1);
+		//}
+		//Sleep(1);
 	}
-
-	//if (hIOCP != NULL)
-	//{
-	//	PostQueuedCompletionStatus(hIOCP, 0, NULL, NULL);
-	//	WaitForSingleObject(hThread, INFINITE);
-	//}
-
-	//CloseHandle(hIOCP);
-	printf_s("exit done! count1 = %d, count2 = %d, lstString size = %d\r\n", count1, count2, lstString.Size());
+	printf_s("exit done! lstString size = %d\r\n", count - lstString.Size());
 	lstString.Clear();
-	printf_s("exit done! count1 = %d, count2 = %d, lstString size = %d\r\n", count1, count2, lstString.Size());
-	::exit(0);
+	total = GetTickCount64();
+	while (GetTickCount64() - total <= 1000)
+	{
+		lstData.push_back("Hello world!");
+	}
+	count = lstData.size();
+	printf_s("exit done! lstData size = %d\r\n", count);
+	total = GetTickCount64();
+	while (GetTickCount64() - total <= 250)
+	{
+		if(lstData.size() > 0) lstData.pop_front();
+	}
+	printf_s("exit done! lstData size = %d\r\n", (count - lstData.size()) * 4);
+	//lstData.clear();
+}
+
+int main()
+{
+	if (!CEdoyunTool::Init()) return 1;
+	CQueue<string> lstString;
+	list<string> lstData;
+	for (int i = 0; i < 10; i++)
+	{
+		test(lstString, lstData);
+	}
 
 	//if (CEdoyunTool::IsAdmin())
 	//{

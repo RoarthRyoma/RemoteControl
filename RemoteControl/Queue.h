@@ -38,7 +38,7 @@ public:
 		m_hThread = INVALID_HANDLE_VALUE;
 		if (m_hCompeletionPort != NULL)
 		{
-			m_hThread = (HANDLE)_beginthread(&CQueue<T>::threadEntry, 0, m_hCompeletionPort);
+			m_hThread = (HANDLE)_beginthread(&CQueue<T>::threadEntry, 0, this);
 		}
 	}
 	~CQueue()
@@ -67,7 +67,7 @@ public:
 		{
 			delete pParam;
 		}
-		//printf("push back done %d %08p\r\n", ret, (void*)pParam);
+		//printf_s("push back done %d %08p\r\n", ret, (void*)pParam);
 		return ret;
 	}
 	bool PopFront(T& data)
@@ -126,7 +126,7 @@ public:
 		{
 			delete pParam;
 		}
-		//printf("push back done %d %08p\r\n", ret, (void*)pParam);
+		//printf_s("push back done %d %08p\r\n", ret, (void*)pParam);
 		return ret;
 	}
 
@@ -146,7 +146,7 @@ private:
 		case EQPush:
 			m_lstData.push_back(pParam->Data);
 			delete pParam;
-			//printf("delete %08p!\r\n", (void*)pParam);
+			//printf_s("delete %08p!\r\n", (void*)pParam);
 			break;
 		case EQPop:
 			if (m_lstData.size() > 0)
@@ -169,7 +169,7 @@ private:
 		case EQClear:
 			m_lstData.clear();
 			delete pParam;
-			//printf("clear %08p!\r\n", (void*)pParam);
+			//printf_s("clear %08p!\r\n", (void*)pParam);
 			break;
 		default:
 			OutputDebugStringA("unknown operator!\r\n");
@@ -185,9 +185,9 @@ private:
 		DWORD dwTransferred = 0;
 		while (GetQueuedCompletionStatus(m_hCompeletionPort, &dwTransferred, &CompletionKey, &pOverlapped, INFINITE))
 		{
-			if (dwTransferred == 0 || CompletionKey == NULL)
+			if (dwTransferred == 0 && CompletionKey == NULL)
 			{
-				printf_s("thread is prepare to exit!\r\n");
+				//printf_s("thread is prepare to exit!\r\n");
 				break;
 			}
 			pParam = (PPARAM*)CompletionKey;
@@ -197,14 +197,16 @@ private:
 		{
 			if ((dwTransferred == 0) && (CompletionKey == NULL))
 			{
-				//printf("thread is prepare to exit!\r\n");
+				//printf_s("thread is prepare to exit!\r\n");
 				continue;
 			}
 			pParam = (PPARAM*)CompletionKey;
 
 			DealParam(pParam);
 		}
-		CloseHandle(m_hCompeletionPort);
+		HANDLE hTemp = m_hCompeletionPort;
+		m_hCompeletionPort = NULL;
+		CloseHandle(hTemp);
 	}
 private:
 	std::list<T>m_lstData;
