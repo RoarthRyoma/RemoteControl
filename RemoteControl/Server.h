@@ -4,6 +4,7 @@
 #include<map>
 #include<MSWSock.h>
 #include <ws2tcpip.h>
+#include "EdoyunTool.h"
 
 enum COperator
 {
@@ -28,6 +29,10 @@ public:
 	CServer* m_server;		//服务器对象
 	CClient* m_client;		//对应的客户端
 	WSABUF m_wsabuffer;
+	virtual ~COverlapped()
+	{
+		m_buffer.clear();
+	}
 };
 
 template<COperator>class AcceptOverlapped;
@@ -41,7 +46,15 @@ class CClient : public ThreadFuncBase
 {
 public:
 	CClient();
-	~CClient() { }
+	~CClient()
+	{
+		m_buffer.clear();
+		closesocket(m_sock);
+		m_recv.reset();
+		m_send.reset();
+		m_accept.reset();
+		m_vecSend.Clear();
+	}
 
 	void SetOverlapped(PCLIENT& ptr);
 
@@ -85,16 +98,11 @@ public:
 		return m_buffer.size();
 	}
 
-	int Recv()
-	{
-		int ret = recv(m_sock, m_buffer.data() + m_used, m_buffer.size() - m_used, 0);
-		if (ret <= 0)
-		{
-			return -1;
-		}
-		m_used += (size_t)ret;
-		return 0;
-	}
+	int Recv();
+
+	int Send(void* buffer, size_t nSize);
+
+	int SendData(std::vector<char>& data);
 private:
 	SOCKET m_sock;
 	DWORD m_received;
@@ -107,6 +115,7 @@ private:
 	sockaddr_in m_laddr;
 	sockaddr_in m_raddr;
 	bool m_isbusy;
+	CSendQueue<std::vector<char>> m_vecSend;	//发送数据队列
 };
 
 template<COperator>
@@ -128,7 +137,6 @@ public:
 		int ret = m_client->Recv();
 		return ret;
 	}
-
 };
 typedef RecvOverlapped<ERecv> RECVOVERLAPPED;
 
@@ -168,16 +176,13 @@ public:
 	{
 		m_hIOCP = INVALID_HANDLE_VALUE;
 		m_sock = INVALID_SOCKET;
-		m_addr.sin_family = AF_INET;
+		//m_addr.sin_family = AF_INET;
 		m_addr.sin_port = htons(port);
 		inet_pton(AF_INET, ip.c_str(), &m_addr.sin_addr.s_addr);
 		//InetPton(AF_INET, (PCWSTR)ip.c_str(), &m_addr.sin_addr.s_addr);
 		//m_addr.sin_addr.S_un.S_addr = inet_addr(ip.c_str());//C4996
 	}
-	~CServer()
-	{
-
-	}
+	~CServer();
 	bool StartService();
 	bool NewAccept();
 private:

@@ -5,7 +5,8 @@
 CClient::CClient() : m_isbusy(false), m_flags(0),
 m_accept(new ACCEPTOVERLAPPED()),
 m_recv(new RECVOVERLAPPED()),
-m_send(new SENDOVERLAPPED())
+m_send(new SENDOVERLAPPED()),
+m_vecSend(this, (SENDCALLBACK)&CClient::SendData)
 {
 	m_sock = WSASocket(PF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 	m_buffer.resize(1024);
@@ -34,6 +35,42 @@ LPWSABUF CClient::RecvWSABuffer()
 LPWSABUF CClient::SendWSABuffer()
 {
 	return &m_send->m_wsabuffer;
+}
+
+int CClient::Recv()
+{
+	int ret = recv(m_sock, m_buffer.data() + m_used, m_buffer.size() - m_used, 0);
+	if (ret <= 0)
+	{
+		return -1;
+	}
+	m_used += (size_t)ret;
+	return 0;
+}
+
+int CClient::Send(void* buffer, size_t nSize)
+{
+	std::vector<char> data(nSize);
+	memcpy(data.data(), buffer, nSize);
+	if (m_vecSend.PushBack(data))
+	{
+		return 0;
+	}
+	return -1;
+}
+
+int CClient::SendData(std::vector<char>& data)
+{
+	if (m_vecSend.Size() > 0)
+	{
+		int ret = WSASend(m_sock, SendWSABuffer(), 1, &m_received, m_flags, &m_send->m_overlapped, NULL);
+		if ((ret != 0) && (WSAGetLastError() != WSA_IO_PENDING))
+		{
+			CEdoyunTool::ShowError();
+			return -1;
+		}
+	}
+	return 0;
 }
 
 template<COperator op>
@@ -84,6 +121,20 @@ SendOverlapped<op>::SendOverlapped()
 	m_worker = ThreadWorker(this, (FUNCTYPE)&SendOverlapped<op>::SendWorker);
 	memset(&m_overlapped, 0, sizeof(m_overlapped));
 	m_buffer.resize(1024 * 256);
+}
+
+CServer::~CServer()
+{
+	closesocket(m_sock);
+	std::map<SOCKET, PCLIENT>::iterator it = m_client.begin();
+	for (; it != m_client.end(); it++)
+	{
+		it->second.reset();
+	}
+	m_client.clear();
+	CloseHandle(m_hIOCP);
+	m_pool.Stop();
+	WSACleanup();
 }
 
 bool CServer::StartService()

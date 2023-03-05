@@ -126,6 +126,10 @@ public:
 	//true 表示空闲  false 表示已经分配了工作
 	bool IsIdle()
 	{
+		if (m_worker.load() == NULL)
+		{
+			return true;
+		}
 		return !m_worker.load()->IsValid();
 	}
 
@@ -134,6 +138,11 @@ private:
 	{
 		while (m_bStatus)
 		{
+			if (m_worker.load() == NULL)
+			{
+				Sleep(1);
+				continue;
+			}
 			::ThreadWorker worker = *m_worker.load();
 			if (worker.IsValid())
 			{
@@ -191,6 +200,11 @@ public:
 	~CThreadPool()
 	{
 		Stop();
+		for (size_t i = 0; i < m_threads.size(); i++)
+		{
+			delete m_threads[i];
+			m_threads[i] = NULL;
+		}
 		m_threads.clear();
 	}
 
