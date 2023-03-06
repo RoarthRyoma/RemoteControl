@@ -428,8 +428,8 @@ void CRemoteClientDlg::InitUIData()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	UpdateData(TRUE);
-	//m_server_address = 0x7F000001;//127.0.0.1
-	m_server_address = 0xC0A80B82;	//192.168.11.130
+	m_server_address = 0x7F000001;//127.0.0.1
+	//m_server_address = 0xC0A80B82;	//192.168.11.130
 	m_port = _T("9527");
 	CClientController::getInstance()->UpdateAddress(m_server_address, atoi((LPCTSTR)m_port));
 	UpdateData(FALSE);

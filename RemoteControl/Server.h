@@ -76,7 +76,11 @@ public:
 	}
 	LPWSABUF RecvWSABuffer();
 
+	LPWSAOVERLAPPED RecvOverlapped();
+
 	LPWSABUF SendWSABuffer();
+
+	LPWSAOVERLAPPED SendOverlapped();
 
 	DWORD& flags()
 	{
@@ -176,18 +180,28 @@ public:
 	{
 		m_hIOCP = INVALID_HANDLE_VALUE;
 		m_sock = INVALID_SOCKET;
-		//m_addr.sin_family = AF_INET;
+		m_addr.sin_family = AF_INET;//这里不设置，下面的函数不会正确设置sin_family,不知道什么原因
 		m_addr.sin_port = htons(port);
-		inet_pton(AF_INET, ip.c_str(), &m_addr.sin_addr.s_addr);
+		INT res = inet_pton(AF_INET, ip.c_str(), &m_addr.sin_addr.S_un.S_addr);
 		//InetPton(AF_INET, (PCWSTR)ip.c_str(), &m_addr.sin_addr.s_addr);
 		//m_addr.sin_addr.S_un.S_addr = inet_addr(ip.c_str());//C4996
+		if (res != 1)
+		{
+			//返回值为1：说明字符串ip被成功转换成了IP地址，并存储在了addr指向的结构体中。
+			//返回值为0：说明字符串ip不是合法的IP地址格式，无法转换。
+			//返回值为 - 1：说明函数执行失败，原因可能是地址族不支持、地址转换失败等。
+			TRACE("inet_pton->res: %d\r\n", res);
+		}
 	}
 	~CServer();
 	bool StartService();
 	bool NewAccept();
+	void BindNewSocket(SOCKET s);
 private:
 	void CreateSocket()
 	{
+		WSADATA WSAData;
+		WSAStartup(MAKEWORD(2, 2), &WSAData);
 		m_sock = WSASocket(PF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 		int opt = 1;
 		setsockopt(m_sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));

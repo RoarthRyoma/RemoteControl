@@ -32,9 +32,19 @@ LPWSABUF CClient::RecvWSABuffer()
 	return &m_recv->m_wsabuffer;
 }
 
+LPWSAOVERLAPPED CClient::RecvOverlapped()
+{
+	return &m_recv->m_overlapped;
+}
+
 LPWSABUF CClient::SendWSABuffer()
 {
 	return &m_send->m_wsabuffer;
+}
+
+LPWSAOVERLAPPED CClient::SendOverlapped()
+{
+	return &m_send->m_overlapped;
 }
 
 int CClient::Recv()
@@ -45,6 +55,7 @@ int CClient::Recv()
 		return -1;
 	}
 	m_used += (size_t)ret;
+	CEdoyunTool::Dump((BYTE*)m_buffer.data(), ret);
 	return 0;
 }
 
@@ -88,10 +99,15 @@ int AcceptOverlapped<op>::AcceptWorker()
 {
 	INT lLength = 0;
 	INT rLength = 0;
-	if (*(LPDWORD)m_client > 0)
+	if (m_client->GetBufferSize() > 0)
 	{
-		GetAcceptExSockaddrs(*m_client, 0, sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16, (sockaddr**)m_client->GetLocalAddr(), &lLength, (sockaddr**)m_client->GetRemoteddr(), &rLength);
-		int ret = WSARecv((SOCKET)*m_client, m_client->RecvWSABuffer(), 1, *m_client, &m_client->flags(), *m_client, NULL);
+		sockaddr* plocal = NULL;
+		sockaddr* premote = NULL;
+		GetAcceptExSockaddrs(*m_client, 0, sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16, (sockaddr**)&plocal, &lLength, (sockaddr**)&premote, &rLength);
+		memcpy(m_client->GetLocalAddr(), plocal, sizeof(sockaddr_in));
+		memcpy(m_client->GetRemoteddr(), premote, sizeof(sockaddr_in));
+		m_server->BindNewSocket(*m_client);
+		int ret = WSARecv((SOCKET)*m_client, m_client->RecvWSABuffer(), 1, *m_client, &m_client->flags(), m_client->RecvOverlapped(), NULL);
 		if ((ret == SOCKET_ERROR) && (WSAGetLastError() != WSA_IO_PENDING))
 		{
 			//TODO:±¨´í
@@ -186,6 +202,11 @@ bool CServer::NewAccept()
 	return true;
 }
 
+void CServer::BindNewSocket(SOCKET s)
+{
+	CreateIoCompletionPort((HANDLE)s, m_hIOCP, (ULONG_PTR)this, 0);
+}
+
 int CServer::threadIocp()
 {
 	DWORD tranferred = 0;
@@ -193,9 +214,11 @@ int CServer::threadIocp()
 	OVERLAPPED* lpOverlapped = NULL;
 	if (GetQueuedCompletionStatus(m_hIOCP, &tranferred, &CompletionKey, &lpOverlapped, INFINITE))
 	{
-		if (tranferred > 0 && CompletionKey != 0)
+		if (CompletionKey != 0)
 		{
 			COverlapped* pOverlapped = CONTAINING_RECORD(lpOverlapped, COverlapped, m_overlapped);
+			TRACE("pOverlapped->m_operator %d \r\n", pOverlapped->m_operator);
+			pOverlapped->m_server = this;
 			switch (pOverlapped->m_operator)
 			{
 			case EAccept:
