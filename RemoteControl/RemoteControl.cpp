@@ -16,6 +16,8 @@
 #include "Queue.h"
 #include <MSWSock.h>
 #include "Server.h"
+#include "ESocket.h"
+#include "ENetwork.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -91,62 +93,39 @@ void clearsock()
 	WSACleanup();
 }
 
+int RecvFromCB(void* arg, const EBuffer& buffer, ESockaddrIn& addr)
+{
+	EServer* server = (EServer*)arg;
+	return server->Sendto(addr, buffer);
+}
+
+int SendToCB(void* arg, const ESockaddrIn& addr, int ret)
+{
+	EServer* server = (EServer*)arg;
+	printf_s("sendto done! %p \r\n", server);
+	return 0;
+}
+
+/// <summary>
+/// 1 易用性
+///		a 简化参数
+///		b 类型适配（参数适配）
+///		c 流程简化
+/// 2. 易移植性(高内聚，低耦合)
+///		- 核心功能是什么?
+///		- 业务逻辑是什么?
+/// </summary>
 void udp_server()
 {
+	std::list<ESockaddrIn> lstclients;
 	printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
-	SOCKET sock = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sock == INVALID_SOCKET)
-	{
-		printf("%s(%d):%s ERROR(%d)!!!\r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());
-		return;
-	}
-	std::list<sockaddr_in> lstclients;
-	sockaddr_in server, client;
-	memset(&server, 0, sizeof(server));
-	memset(&client, 0, sizeof(client));
-	server.sin_family = AF_INET;
-	server.sin_port = htons(20000);
-	//server.sin_addr.s_addr = inet_addr("127.0.0.1");
-	std::string ip = "127.0.0.1";
-	inet_pton(AF_INET, ip.c_str(), &server.sin_addr.S_un.S_addr);
-	if (-1 == bind(sock, (sockaddr*)&server, sizeof(server)))
-	{
-		printf("%s(%d):%s ERROR(%d)!!!\r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError());
-		closesocket(sock);
-		return;
-	}
-	std::string buff;
-	buff.resize(1024 * 256);
-	memset((char*) buff.c_str(), 0, buff.size());
-	int len = sizeof(client);
-	int ret = 0;
-	while (!_kbhit())
-	{
-		ret = recvfrom(sock, (char*)buff.c_str(), buff.size(), 0, (sockaddr*)&client, &len);
-		if (ret > 0)
-		{
-			if (lstclients.size() <= 0)
-			{
-				lstclients.push_back(client);
-				printf("%s(%d):%s, IP %08X port %d\r\n", __FILE__, __LINE__, __FUNCTION__, client.sin_addr.s_addr, ntohs(client.sin_port));
-				ret = sendto(sock, buff.c_str(), ret, 0, (sockaddr*)&client, len);
-				printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
-			}
-			else
-			{
-				memcpy((void*)buff.c_str(), &lstclients.front(), sizeof(lstclients.front()));
-				ret = sendto(sock, buff.c_str(), sizeof(lstclients.front()), 0, (sockaddr*)&client, len);
-				printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
-			}
-			//CEdoyunTool::Dump((BYTE*)buff.c_str(), ret);
-		}
-		else
-		{
-			printf("%s(%d):%s ERROR(%d)!!! ret=%d\r\n", __FILE__, __LINE__, __FUNCTION__, WSAGetLastError(), ret);
-		}
-	}
-	closesocket(sock);
+	EServerParameter param("127.0.0.1", 20000, ETYPE::ETypeUDP, NULL, NULL, NULL, RecvFromCB, SendToCB);
+	EServer server(param);
+	server.Invoke(&server);
+
 	printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
+	getchar();
+	return;
 }
 
 void udp_client(bool isHost = true)
@@ -169,7 +148,7 @@ void udp_client(bool isHost = true)
 	if (isHost)	//主客户端代码
 	{
 		printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
-		std::string msg = "Hello world!\n";
+		EBuffer msg = "Hello world!\n";
 		int ret = sendto(sock, msg.c_str(), msg.size(), 0, (sockaddr*)&server, sizeof(server));
 		printf("%s(%d):%s ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, ret);
 		if (ret > 0)
@@ -222,6 +201,8 @@ void udp_client(bool isHost = true)
 	closesocket(sock);
 }
 
+//int wmain(int argc, TCHAR* argv[]);
+//int _tmain(int argc, TCHAR* argv[]);
 int main(int argc, char* argv[])
 {
 	if (!CEdoyunTool::Init()) return 1;
